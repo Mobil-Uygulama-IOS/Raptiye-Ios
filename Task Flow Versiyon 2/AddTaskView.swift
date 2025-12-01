@@ -23,6 +23,7 @@ struct AddTaskView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
+                    
                     Button(action: {
                         presentationMode.wrappedValue.dismiss()
                     }) {
