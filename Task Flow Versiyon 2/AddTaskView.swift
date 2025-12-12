@@ -229,6 +229,7 @@ struct AddTaskView: View {
                             DatePicker(
                                 "",
                                 selection: $dueDate,
+                                in: Date()...,
                                 displayedComponents: [.date]
                             )
                             .datePickerStyle(.graphical)

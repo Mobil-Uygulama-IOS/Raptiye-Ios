@@ -2,13 +2,13 @@ import SwiftUI
 
 struct TaskDetailView: View {
     @Environment(\.presentationMode) var presentationMode
-    @State private var task: ProjectTask
+    @Binding var task: ProjectTask
     @State private var newComment: String = ""
     @FocusState private var isCommentFieldFocused: Bool
     
-    init(task: ProjectTask = ProjectTask.sampleTask) {
-        _task = State(initialValue: task)
-        print("TaskDetailView init with task: \(task.title)")
+    init(task: Binding<ProjectTask>) {
+        _task = task
+        print("TaskDetailView init with task: \(task.wrappedValue.title)")
     }
     
     var priorityColor: Color {
@@ -338,8 +338,10 @@ struct CommentCard: View {
 
 // MARK: - Preview
 struct TaskDetailView_Previews: PreviewProvider {
+    @State static var sampleTask = ProjectTask.sampleTask
+    
     static var previews: some View {
-        TaskDetailView()
+        TaskDetailView(task: $sampleTask)
             .preferredColorScheme(.dark)
     }
 }

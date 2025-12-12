@@ -5,7 +5,8 @@ struct ProjectDetailView: View {
     @EnvironmentObject var projectManager: ProjectManager
     @StateObject private var localization = LocalizationManager.shared
     @Binding var project: Project
-    @State private var selectedTask: ProjectTask?
+    @State private var selectedTaskIndex: Int?
+    @State private var showTaskDetail = false
     @State private var showAnalytics = false
     @State private var showAddTask = false
     @State private var showAddTeamMember = false
@@ -37,7 +38,8 @@ struct ProjectDetailView: View {
     }
     
     var priorityColor: Color {
-        guard let task = selectedTask else { return .blue }
+        guard let index = selectedTaskIndex, index < project.tasks.count else { return .blue }
+        let task = project.tasks[index]
         switch task.priority {
         case .high:
             return .red
@@ -231,13 +233,13 @@ struct ProjectDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
                             } else {
-                                ForEach(Array(project.tasks.enumerated()), id: \.element.id) { index, task in
-                                    TaskRowCard(task: task) {
-                                        // Toggle completion
-                                        project.tasks[index].isCompleted.toggle()
+                                ForEach(Array(project.tasks.indices), id: \.self) { index in
+                                    TaskRowCard(task: project.tasks[index]) {
+                                        toggleTaskCompletion(project.tasks[index])
                                     }
                                     .onTapGesture {
-                                        selectedTask = task
+                                        selectedTaskIndex = index
+                                        showTaskDetail = true
                                     }
                                 }
                             }
@@ -249,8 +251,10 @@ struct ProjectDetailView: View {
             }
         }
         .navigationBarHidden(true)
-        .sheet(item: $selectedTask) { task in
-            TaskDetailView(task: task)
+        .sheet(isPresented: $showTaskDetail) {
+            if let index = selectedTaskIndex, index < project.tasks.count {
+                TaskDetailView(task: $project.tasks[index])
+            }
         }
         .sheet(isPresented: $showAnalytics) {
             ProjectAnalyticsView(project: project)
@@ -284,6 +288,12 @@ struct ProjectDetailView: View {
             }
         } message: {
             Text(localization.localizedString("DeleteProjectConfirmation"))
+        }
+    }
+    
+    private func toggleTaskCompletion(_ task: ProjectTask) {
+        if let index = project.tasks.firstIndex(where: { $0.id == task.id }) {
+            project.tasks[index].isCompleted.toggle()
         }
     }
     

@@ -15,6 +15,7 @@ import FirebaseFirestore
 final class AuthViewModel: ObservableObject {
     @Published var userSession: MockUser?
     @Published var errorMessage: String?
+    @Published var successMessage: String?
     @Published var isLoading = false
     
     private let db = Firestore.firestore()
@@ -157,9 +158,17 @@ final class AuthViewModel: ObservableObject {
     func resetPassword(email: String) async {
         isLoading = true
         errorMessage = nil
+        successMessage = nil
+        
+        guard !email.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Lütfen e-posta adresinizi girin."
+            isLoading = false
+            return
+        }
         
         do {
-            try await Auth.auth().sendPasswordReset(withEmail: email)
+            try await Auth.auth().sendPasswordReset(withEmail: email.trimmingCharacters(in: .whitespaces).lowercased())
+            successMessage = "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."
             print("✅ Şifre sıfırlama e-postası gönderildi: \(email)")
         } catch {
             errorMessage = error.localizedDescription

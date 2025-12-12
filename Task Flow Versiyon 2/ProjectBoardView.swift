@@ -13,7 +13,8 @@ struct ProjectBoardView: View {
     @EnvironmentObject var projectManager: ProjectManager
     @Environment(\.presentationMode) var presentationMode
     @State private var selectedTab = 0
-    @State private var selectedTask: ProjectTask?
+    @State private var selectedProjectIndex: Int?
+    @State private var selectedTaskIndex: Int?
     @State private var showTaskDetail = false
     
     let tabs = ["Yapılacaklar", "Devam Ediyor", "Tamamlandı"]
@@ -100,8 +101,15 @@ struct ProjectBoardView: View {
                             TaskBoardCard(task: task)
                                 .environmentObject(themeManager)
                                 .onTapGesture {
-                                    selectedTask = task
-                                    showTaskDetail = true
+                                    // Hangi projeye ait olduğunu bul
+                                    for (pIndex, project) in projectManager.projects.enumerated() {
+                                        if let tIndex = project.tasks.firstIndex(where: { $0.id == task.id }) {
+                                            selectedProjectIndex = pIndex
+                                            selectedTaskIndex = tIndex
+                                            showTaskDetail = true
+                                            break
+                                        }
+                                    }
                                 }
                         }
                     }
@@ -113,9 +121,15 @@ struct ProjectBoardView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showTaskDetail) {
-            if let task = selectedTask {
-                TaskDetailView(task: task)
-                    .environmentObject(themeManager)
+            if let pIndex = selectedProjectIndex,
+               let tIndex = selectedTaskIndex,
+               pIndex < projectManager.projects.count,
+               tIndex < projectManager.projects[pIndex].tasks.count {
+                TaskDetailView(task: Binding(
+                    get: { projectManager.projects[pIndex].tasks[tIndex] },
+                    set: { projectManager.projects[pIndex].tasks[tIndex] = $0 }
+                ))
+                .environmentObject(themeManager)
             }
         }
     }
