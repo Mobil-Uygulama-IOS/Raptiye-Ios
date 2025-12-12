@@ -13,6 +13,7 @@ struct User: Identifiable, Codable {
     let displayName: String?
     let email: String?
     let photoUrl: String?
+    let createdAt: Date?
     
     var id: String { uid }
     
@@ -24,11 +25,20 @@ struct User: Identifiable, Codable {
         return "U"
     }
     
-    init(uid: String, displayName: String? = nil, email: String? = nil, photoUrl: String? = nil) {
+    enum CodingKeys: String, CodingKey {
+        case uid
+        case displayName
+        case email
+        case photoUrl
+        case createdAt
+    }
+    
+    init(uid: String, displayName: String? = nil, email: String? = nil, photoUrl: String? = nil, createdAt: Date? = nil) {
         self.uid = uid
         self.displayName = displayName
         self.email = email
         self.photoUrl = photoUrl
+        self.createdAt = createdAt
     }
     
     /// Örnek kullanıcılar

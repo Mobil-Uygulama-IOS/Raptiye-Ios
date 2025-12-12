@@ -108,8 +108,25 @@ struct OverviewTabContent: View {
         project.tasks.filter { !$0.isCompleted }.count
     }
     
-    var pendingCount: Int {
-        project.tasks.filter { !$0.isCompleted }.count
+    var totalTasks: Int {
+        project.tasksCount
+    }
+    
+    var maxCount: Int {
+        max(completedCount, max(inProgressCount, 1))
+    }
+    
+    func barHeight(for count: Int) -> CGFloat {
+        guard maxCount > 0 else { return 20 }
+        return CGFloat(count) / CGFloat(maxCount) * 120 + 20
+    }
+    
+    var statusColor: Color {
+        switch project.status {
+        case .todo: return .gray
+        case .inProgress: return .blue
+        case .completed: return .green
+        }
     }
     
     var body: some View {
@@ -125,32 +142,26 @@ struct OverviewTabContent: View {
                         .font(.system(size: 48, weight: .bold))
                         .foregroundColor(.white)
                     
-                    HStack(spacing: 6) {
-                        Text("Last 30 Days")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        
-                        Text("+10%")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.green)
-                    }
+                    Text("\(completedCount) of \(totalTasks) tasks completed")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
                 }
                 
                 // Bar Chart
                 HStack(alignment: .bottom, spacing: 20) {
                     // Completed
                     VStack(spacing: 8) {
-                        VStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color(red: 0.2, green: 0.25, blue: 0.35))
-                                .frame(height: 60)
+                        VStack(spacing: 4) {
+                            Text("\(completedCount)")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
                             
                             Rectangle()
-                                .fill(Color.blue)
-                                .frame(height: 80)
+                                .fill(Color.green)
+                                .frame(height: barHeight(for: completedCount))
+                                .cornerRadius(8)
                         }
                         .frame(maxWidth: .infinity)
-                        .cornerRadius(8)
                         
                         Text("Completed")
                             .font(.system(size: 12))
@@ -159,38 +170,38 @@ struct OverviewTabContent: View {
                     
                     // In Progress
                     VStack(spacing: 8) {
-                        VStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color(red: 0.2, green: 0.25, blue: 0.35))
-                                .frame(height: 20)
+                        VStack(spacing: 4) {
+                            Text("\(inProgressCount)")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
                             
                             Rectangle()
                                 .fill(Color.blue)
-                                .frame(height: 120)
+                                .frame(height: barHeight(for: inProgressCount))
+                                .cornerRadius(8)
                         }
                         .frame(maxWidth: .infinity)
-                        .cornerRadius(8)
                         
                         Text("In Progress")
                             .font(.system(size: 12))
                             .foregroundColor(.gray)
                     }
                     
-                    // Pending
+                    // Total
                     VStack(spacing: 8) {
-                        VStack(spacing: 0) {
-                            Rectangle()
-                                .fill(Color(red: 0.2, green: 0.25, blue: 0.35))
-                                .frame(height: 80)
+                        VStack(spacing: 4) {
+                            Text("\(totalTasks)")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
                             
                             Rectangle()
-                                .fill(Color.blue)
-                                .frame(height: 60)
+                                .fill(Color.purple)
+                                .frame(height: barHeight(for: totalTasks))
+                                .cornerRadius(8)
                         }
                         .frame(maxWidth: .infinity)
-                        .cornerRadius(8)
                         
-                        Text("Pending")
+                        Text("Total")
                             .font(.system(size: 12))
                             .foregroundColor(.gray)
                     }
@@ -203,31 +214,51 @@ struct OverviewTabContent: View {
                     .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
             )
             
-            // Project Timeline Card
+            // Project Status Card
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Project Timeline")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                    
-                    Text("120 days")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(.white)
-                    
-                    HStack(spacing: 6) {
-                        Text("Current Project")
+                Text("Project Status")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                
+                HStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Due Date")
                             .font(.system(size: 14))
                             .foregroundColor(.gray)
                         
-                        Text("-15%")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.red)
+                        if let dueDate = project.dueDate {
+                            Text(dueDate, style: .date)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                        } else {
+                            Text("Not set")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.gray)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(red: 0.2, green: 0.25, blue: 0.35))
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Status")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        
+                        Text(project.status.rawValue.capitalized)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(statusColor)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(red: 0.2, green: 0.25, blue: 0.35))
+                    )
                 }
-                
-                // Line Chart
-                TimelineChartView()
-                    .frame(height: 150)
             }
             .padding(20)
             .background(
@@ -236,62 +267,6 @@ struct OverviewTabContent: View {
             )
         }
     }
-}
-
-// MARK: - Timeline Chart View
-struct TimelineChartView: View {
-    let dataPoints: [ChartDataPoint] = [
-        ChartDataPoint(week: "Week 1", value: 75),
-        ChartDataPoint(week: "Week 2", value: 45),
-        ChartDataPoint(week: "Week 3", value: 60),
-        ChartDataPoint(week: "Week 4", value: 30),
-        ChartDataPoint(week: "Week 5", value: 50),
-        ChartDataPoint(week: "Week 6", value: 85),
-        ChartDataPoint(week: "Week 7", value: 65)
-    ]
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            // Chart area
-            GeometryReader { geometry in
-                ZStack {
-                    // Line path
-                    Path { path in
-                        let width = geometry.size.width
-                        let height = geometry.size.height
-                        let stepX = width / CGFloat(dataPoints.count - 1)
-                        
-                        for (index, point) in dataPoints.enumerated() {
-                            let x = CGFloat(index) * stepX
-                            let y = height - (CGFloat(point.value) / 100.0 * height)
-                            
-                            if index == 0 {
-                                path.move(to: CGPoint(x: x, y: y))
-                            } else {
-                                path.addLine(to: CGPoint(x: x, y: y))
-                            }
-                        }
-                    }
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                }
-            }
-            
-            // Week labels
-            HStack {
-                ForEach(["Week 1", "Week 2", "Week 3", "Week 4"], id: \.self) { week in
-                    Text(week)
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-    }
-}
-
-struct ChartDataPoint {
-    let week: String
-    let value: Double
 }
 
 // MARK: - Progress Tab Content
@@ -415,25 +390,29 @@ struct ProgressTabContent: View {
 struct TeamTabContent: View {
     let project: Project
     
-    var teamMembers: [TaskAssignee] {
-        var members: [TaskAssignee] = []
-        var seenIds = Set<UUID>()
-        
-        for task in project.tasks {
-            if let assignee = task.assignee, !seenIds.contains(assignee.id) {
-                members.append(assignee)
-                seenIds.insert(assignee.id)
-            }
+    var allTeamMembers: [User] {
+        var members: [User] = []
+        if let leader = project.teamLeader {
+            members.append(leader)
         }
+        members.append(contentsOf: project.teamMembers)
         return members
     }
     
-    func tasksForMember(_ member: TaskAssignee) -> [ProjectTask] {
-        project.tasks.filter { $0.assignee?.id == member.id }
+    func tasksForMember(_ member: User) -> Int {
+        project.tasks.filter { task in
+            guard let assigneeEmail = task.assignee?.email,
+                  let memberEmail = member.email else { return false }
+            return assigneeEmail.lowercased() == memberEmail.lowercased()
+        }.count
     }
     
-    func completedTasksForMember(_ member: TaskAssignee) -> Int {
-        project.tasks.filter { $0.assignee?.id == member.id && $0.isCompleted }.count
+    func completedTasksForMember(_ member: User) -> Int {
+        project.tasks.filter { task in
+            guard let assigneeEmail = task.assignee?.email,
+                  let memberEmail = member.email else { return false }
+            return assigneeEmail.lowercased() == memberEmail.lowercased() && task.isCompleted
+        }.count
     }
     
     var body: some View {
@@ -443,7 +422,7 @@ struct TeamTabContent: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
                 
-                if teamMembers.isEmpty {
+                if allTeamMembers.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "person.2.slash")
                             .font(.system(size: 40))
@@ -456,11 +435,12 @@ struct TeamTabContent: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
                 } else {
-                    ForEach(teamMembers) { member in
-                        TeamMemberCard(
+                    ForEach(allTeamMembers) { member in
+                        UserTeamMemberCard(
                             member: member,
-                            totalTasks: tasksForMember(member).count,
-                            completedTasks: completedTasksForMember(member)
+                            totalTasks: tasksForMember(member),
+                            completedTasks: completedTasksForMember(member),
+                            isLeader: project.teamLeader?.id == member.id
                         )
                     }
                 }
@@ -469,11 +449,12 @@ struct TeamTabContent: View {
     }
 }
 
-// MARK: - Team Member Card
-struct TeamMemberCard: View {
-    let member: TaskAssignee
+// MARK: - User Team Member Card
+struct UserTeamMemberCard: View {
+    let member: User
     let totalTasks: Int
     let completedTasks: Int
+    let isLeader: Bool
     
     var completionRate: Double {
         guard totalTasks > 0 else { return 0 }
@@ -484,21 +465,35 @@ struct TeamMemberCard: View {
         HStack(spacing: 16) {
             // Avatar
             Circle()
-                .fill(Color.blue.opacity(0.3))
+                .fill(isLeader ? Color.orange.opacity(0.3) : Color.blue.opacity(0.3))
                 .frame(width: 50, height: 50)
                 .overlay(
                     Image(systemName: "person.fill")
                         .font(.system(size: 22))
-                        .foregroundColor(.blue)
+                        .foregroundColor(isLeader ? .orange : .blue)
                 )
             
             // Member info
             VStack(alignment: .leading, spacing: 6) {
-                Text(member.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    Text(member.displayName ?? (member.email ?? "Unknown"))
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    if isLeader {
+                        Text("Leader")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(Color.orange.opacity(0.2))
+                            )
+                    }
+                }
                 
-                Text(member.email)
+                Text(member.email ?? "")
                     .font(.system(size: 13))
                     .foregroundColor(.gray)
                 
@@ -507,12 +502,14 @@ struct TeamMemberCard: View {
                         .font(.system(size: 12))
                         .foregroundColor(.gray)
                     
-                    Text("•")
-                        .foregroundColor(.gray)
-                    
-                    Text("\(Int(completionRate * 100))%")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.blue)
+                    if totalTasks > 0 {
+                        Text("•")
+                            .foregroundColor(.gray)
+                        
+                        Text("\(Int(completionRate * 100))%")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
                 }
             }
             

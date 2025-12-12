@@ -13,12 +13,20 @@ struct AddTaskView: View {
     @State private var selectedPriority: TaskPriority = .medium
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case title, description
+    }
     
     var body: some View {
         ZStack {
             // Dark background
             Color(red: 0.11, green: 0.13, blue: 0.16)
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Header
@@ -68,6 +76,11 @@ struct AddTaskView: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
                                 )
+                                .focused($focusedField, equals: .title)
+                                .submitLabel(.next)
+                                .onSubmit {
+                                    focusedField = .description
+                                }
                         }
                         
                         // Görev Açıklaması
@@ -242,6 +255,8 @@ struct AddTaskView: View {
     }
     
     private func saveTask() {
+        hideKeyboard()
+        
         guard !taskTitle.isEmpty else {
             alertMessage = "Lütfen görev başlığını girin."
             showAlert = true
@@ -272,6 +287,11 @@ struct AddTaskView: View {
         
         // View'i kapat
         presentationMode.wrappedValue.dismiss()
+    }
+    
+    private func hideKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

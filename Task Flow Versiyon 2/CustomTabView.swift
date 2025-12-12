@@ -140,6 +140,9 @@ struct SettingsView: View {
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var localization = LocalizationManager.shared
     @State private var showProfileView = false
+    @State private var showNotificationsSettings = false
+    @State private var showHelp = false
+    @State private var showAbout = false
     
     var body: some View {
         NavigationView {
@@ -154,8 +157,9 @@ struct SettingsView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 20)
+                .padding(.top, ((UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows.first?.safeAreaInsets.top }.first) ?? 0) + 8)
+                .padding(.bottom, 16)
+                .background(themeManager.backgroundColor.ignoresSafeArea(.container, edges: .top))
                 
                 // Settings list
                 ScrollView {
@@ -215,7 +219,30 @@ struct SettingsView: View {
                                 .padding(.horizontal, 20)
                             
                             VStack(spacing: 1) {
-                                SettingsRow(icon: "bell", title: localization.localizedString("Notifications"), color: .orange)
+                                Button(action: {
+                                    showNotificationsSettings = true
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "bell")
+                                            .font(.title3)
+                                            .foregroundColor(.orange)
+                                            .frame(width: 24)
+                                        
+                                        Text(localization.localizedString("Notifications"))
+                                            .font(.body)
+                                            .foregroundColor(themeManager.textColor)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(16)
+                                    .background(themeManager.cardBackground)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(PlainButtonStyle())
                                 
                                 // Koyu Tema Toggle
                                 SettingsToggleRow(
@@ -252,8 +279,55 @@ struct SettingsView: View {
                                 }
                                 .padding(16)
                                 
-                                SettingsRow(icon: "questionmark.circle", title: localization.localizedString("Help"), color: .green)
-                                SettingsRow(icon: "info.circle", title: localization.localizedString("About"), color: .gray)
+                                Button(action: {
+                                    showHelp = true
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "questionmark.circle")
+                                            .font(.title3)
+                                            .foregroundColor(.green)
+                                            .frame(width: 24)
+                                        
+                                        Text(localization.localizedString("Help"))
+                                            .font(.body)
+                                            .foregroundColor(themeManager.textColor)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(16)
+                                    .background(themeManager.cardBackground)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Button(action: {
+                                    showAbout = true
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "info.circle")
+                                            .font(.title3)
+                                            .foregroundColor(.gray)
+                                            .frame(width: 24)
+                                        
+                                        Text(localization.localizedString("About"))
+                                            .font(.body)
+                                            .foregroundColor(themeManager.textColor)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(16)
+                                    .background(themeManager.cardBackground)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                             .background(themeManager.cardBackground)
                             .cornerRadius(12)
@@ -288,12 +362,26 @@ struct SettingsView: View {
                 
                 Spacer()
             }
-            .background(themeManager.backgroundColor)
+            .background(themeManager.backgroundColor.ignoresSafeArea())
+            .edgesIgnoringSafeArea(.all)
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showProfileView) {
             ProfileEditView()
                 .environmentObject(authViewModel)
+                .environmentObject(themeManager)
+        }
+        .sheet(isPresented: $showNotificationsSettings) {
+            NotificationSettingsView()
+                .environmentObject(themeManager)
+        }
+        .sheet(isPresented: $showHelp) {
+            HelpView()
+                .environmentObject(themeManager)
+        }
+        .sheet(isPresented: $showAbout) {
+            AboutView()
+                .environmentObject(themeManager)
         }
     }
 }

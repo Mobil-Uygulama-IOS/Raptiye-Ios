@@ -21,7 +21,11 @@ struct Project: Identifiable, Codable {
     var teamLeader: User?
     var teamMembers: [User]
     
-    init(id: UUID = UUID(), title: String, description: String, iconName: String = "folder.fill", iconColor: String = "blue", status: ProjectStatus = .todo, dueDate: Date? = nil, tasks: [ProjectTask] = [], teamLeader: User? = nil, teamMembers: [User] = [], createdDate: Date = Date()) {
+    // Firebase için gerekli alanlar
+    var ownerId: String = ""
+    var teamMemberIds: [String] = []
+    
+    init(id: UUID = UUID(), title: String, description: String, iconName: String = "folder.fill", iconColor: String = "blue", status: ProjectStatus = .todo, dueDate: Date? = nil, tasks: [ProjectTask] = [], teamLeader: User? = nil, teamMembers: [User] = [], createdDate: Date = Date(), ownerId: String = "", teamMemberIds: [String] = []) {
         self.id = id
         self.title = title
         self.description = description
@@ -33,6 +37,8 @@ struct Project: Identifiable, Codable {
         self.tasks = tasks
         self.teamLeader = teamLeader
         self.teamMembers = teamMembers
+        self.ownerId = ownerId
+        self.teamMemberIds = teamMemberIds
     }
     
     var tasksCount: Int {

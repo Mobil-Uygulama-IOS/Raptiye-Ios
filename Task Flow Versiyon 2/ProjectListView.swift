@@ -9,9 +9,12 @@ struct ProjectListView: View {
     @State private var selectedFilterOption = LocalizationManager.shared.localizedString("FilterOptionAll")
     @State private var showAnalytics = false
     @State private var showProjectBoard = false
-    @State private var showProjectDetail = false
     @State private var selectedProject: Project?
     @State private var showCreateProject = false
+    
+    init() {
+        print("📋 ProjectListView initialized")
+    }
     
     var sortOptions: [String] {
         [localization.localizedString("SortOptionDate"), localization.localizedString("SortOptionName"), localization.localizedString("SortOptionProgress")]
@@ -60,188 +63,211 @@ struct ProjectListView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Dynamic background based on theme
-                themeManager.backgroundColor
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Header with title and buttons (Android style)
-                    HStack {
-                        Text(localization.localizedString("Projects"))
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(themeManager.textColor)
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 12) {
-                            // Analytics button
-                            Button(action: {
+        let _ = print("📋 ProjectListView render")
+        
+        // NavigationView YOK (Doğru), ama modifierlar ZStack'e eklenecek.
+        return ZStack {
+            themeManager.backgroundColor.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // --- Header Kısmı ---
+                HStack {
+                    Text(localization.localizedString("Projects"))
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(themeManager.textColor)
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 12) {
+                        // Analytics button
+                        Button(action: {
+                            if !projectManager.projects.isEmpty {
                                 selectedProject = projectManager.projects.first
                                 showAnalytics = true
-                            }) {
-                                Image(systemName: "chart.bar.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.white)
-                                    .frame(width: 40, height: 40)
-                                    .background(Color.orange)
-                                    .clipShape(Circle())
                             }
-                            
-                            // Kanban Board button
-                            Button(action: {
+                        }) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(projectManager.projects.isEmpty ? Color.orange.opacity(0.5) : Color.orange)
+                                .clipShape(Circle())
+                        }
+                        .disabled(projectManager.projects.isEmpty)
+                        
+                        // Kanban Board button
+                        Button(action: {
+                            if !projectManager.projects.isEmpty {
                                 showProjectBoard = true
-                            }) {
-                                Image(systemName: "square.grid.2x2.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(.white)
-                                    .frame(width: 40, height: 40)
-                                    .background(Color.green)
-                                    .clipShape(Circle())
+                            }
+                        }) {
+                            Image(systemName: "square.grid.2x2.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(projectManager.projects.isEmpty ? Color.green.opacity(0.5) : Color.green)
+                                .clipShape(Circle())
+                        }
+                        .disabled(projectManager.projects.isEmpty)
+                        
+                        // Add new project button
+                        Button(action: {
+                            showCreateProject = true
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 20))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, ((UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows.first?.safeAreaInsets.top }.first) ?? 0) + 8)
+                .padding(.bottom, 16)
+                .background(themeManager.backgroundColor.ignoresSafeArea(.container, edges: .top))
+                
+                // --- Scrollable Content ---
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Search bar
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(themeManager.secondaryTextColor)
+                            
+                            TextField(localization.localizedString("SearchProjectsPlaceholder"), text: $searchText)
+                                .textFieldStyle(PlainTextFieldStyle())
+                                .foregroundColor(themeManager.textColor)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(themeManager.searchBackground)
+                        .cornerRadius(12)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        
+                        // Sort and Filter buttons
+                        HStack(spacing: 12) {
+                            // Sort dropdown
+                            Menu {
+                                ForEach(sortOptions, id: \.self) { option in
+                                    Button(action: {
+                                        selectedSortOption = option
+                                    }) {
+                                        HStack {
+                                            Text(option)
+                                            if selectedSortOption == option {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(localization.localizedString("Sort"))
+                                    Image(systemName: "chevron.down")
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(themeManager.textColor)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(themeManager.cardBackground)
+                                .cornerRadius(8)
                             }
                             
-                            // Add new project button
-                            Button(action: {
-                                showCreateProject = true
-                            }) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 20))
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.white)
-                                    .frame(width: 40, height: 40)
-                                    .background(Color.blue)
-                                    .clipShape(Circle())
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
-                    
-                    // Search bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(themeManager.secondaryTextColor)
-                        
-                        TextField(localization.localizedString("SearchProjectsPlaceholder"), text: $searchText)
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .foregroundColor(themeManager.textColor)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(themeManager.searchBackground)
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    
-                    // Sort and Filter buttons
-                    HStack(spacing: 12) {
-                        // Sort dropdown
-                        Menu {
-                            ForEach(sortOptions, id: \.self) { option in
-                                Button(action: {
-                                    selectedSortOption = option
-                                }) {
-                                    HStack {
-                                        Text(option)
-                                        if selectedSortOption == option {
-                                            Image(systemName: "checkmark")
+                            // Filter dropdown
+                            Menu {
+                                ForEach(filterOptions, id: \.self) { option in
+                                    Button(action: {
+                                        selectedFilterOption = option
+                                    }) {
+                                        HStack {
+                                            Text(option)
+                                            if selectedFilterOption == option {
+                                                Image(systemName: "checkmark")
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        } label: {
-                            HStack {
-                                Text(localization.localizedString("Sort"))
-                                Image(systemName: "chevron.down")
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(themeManager.textColor)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(themeManager.cardBackground)
-                            .cornerRadius(8)
-                        }
-                        
-                        // Filter dropdown
-                        Menu {
-                            ForEach(filterOptions, id: \.self) { option in
-                                Button(action: {
-                                    selectedFilterOption = option
-                                }) {
-                                    HStack {
-                                        Text(option)
-                                        if selectedFilterOption == option {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
+                            } label: {
+                                HStack {
+                                    Text(localization.localizedString("Filter"))
+                                    Image(systemName: "chevron.down")
                                 }
-                            }
-                        } label: {
-                            HStack {
-                                Text(localization.localizedString("Filter"))
-                                Image(systemName: "chevron.down")
-                            }
-                            .font(.subheadline)
-                            .foregroundColor(themeManager.textColor)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(themeManager.cardBackground)
-                            .cornerRadius(8)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    
-                    // Projects section
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text(localization.localizedString("MyProjects"))
-                                .font(.title2)
-                                .fontWeight(.bold)
+                                .font(.subheadline)
                                 .foregroundColor(themeManager.textColor)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(themeManager.cardBackground)
+                                .cornerRadius(8)
+                            }
                             
                             Spacer()
                         }
                         .padding(.horizontal, 20)
-                        .padding(.top, 24)
+                        .padding(.top, 16)
                         
-                        // Projects list
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(filteredProjects) { project in
-                                    ProjectCardView(project: project)
-                                        .environmentObject(themeManager)
-                                        .onTapGesture {
-                                            selectedProject = project
-                                            showProjectDetail = true
-                                        }
-                                }
+                        // Projects section
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text(localization.localizedString("MyProjects"))
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(themeManager.textColor)
+                                
+                                Spacer()
                             }
                             .padding(.horizontal, 20)
+                            .padding(.top, 24)
+                            
+                            // --- PROJECTS LIST ---
+                            if filteredProjects.isEmpty {
+                                // Empty state view...
+                                emptyStateView
+                            } else {
+                                // LISTE BURADA BAŞLIYOR
+                                LazyVStack(spacing: 12) {
+                                    ForEach(filteredProjects) { project in
+                                        Button(action: {
+                                            print("🔍 Proje seçildi (Button): \(project.title)")
+                                            selectedProject = project
+                                        }) {
+                                            ProjectCardView(project: project)
+                                        }
+                                        .buttonStyle(PlainButtonStyle()) 
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+                            }
                         }
                     }
-                }
+                } // ScrollView sonu
             }
         }
-        .navigationBarHidden(true)
-        .sheet(isPresented: $showProjectDetail) {
-            if let selectedProject = selectedProject,
-               let index = projectManager.projects.firstIndex(where: { $0.id == selectedProject.id }) {
-                ProjectDetailView(project: Binding(
-                    get: { projectManager.projects[index] },
-                    set: { updatedProject in
-                        Task {
-                            try? await projectManager.updateProject(updatedProject)
-                        }
+        // DÜZELTME BURADA:
+        // NavigationView sargısı YOK, ama Parent View'dan (MainApp/CustomTabView) gelen barı gizlemek zorundayız.
+        .navigationBarTitle("") // Başlığı boşalt
+        .navigationBarHidden(true) // Barı tamamen gizle (Legacy)
+        .navigationBarBackButtonHidden(true) // Geri butonunu gizle
+        .edgesIgnoringSafeArea(.all) // Kenar boşluklarını yok say
+        // --- Navigation / Sheets ---
+        .sheet(item: $selectedProject) { project in
+            ProjectDetailView(project: Binding(
+                get: { 
+                    projectManager.projects.first(where: { $0.id == project.id }) ?? project 
+                },
+                set: { updatedProject in
+                    Task {
+                        try? await projectManager.updateProject(updatedProject)
                     }
-                ))
-                .environmentObject(themeManager)
-                .environmentObject(projectManager)
-            }
+                }
+            ))
+            .environmentObject(themeManager)
+            .environmentObject(projectManager)
         }
         .sheet(isPresented: $showAnalytics) {
             if let project = selectedProject {
@@ -252,32 +278,63 @@ struct ProjectListView: View {
         .sheet(isPresented: $showProjectBoard) {
             ProjectBoardView()
                 .environmentObject(themeManager)
+                .environmentObject(projectManager)
         }
-                                .sheet(isPresented: $showCreateProject) {
-                            CreateProjectView { newProject in
-                                // Yeni proje oluşturulduğunda otomatik olarak aç
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    selectedProject = newProject
-                                    showProjectDetail = true
-                                }
-                            }
-                            .environmentObject(projectManager)
-                        }
+        .sheet(isPresented: $showCreateProject) {
+            CreateProjectView { newProject in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    if let foundProject = projectManager.projects.first(where: { $0.id == newProject.id }) {
+                        selectedProject = foundProject
+                    }
+                }
+            }
+            .environmentObject(projectManager)
+            .environmentObject(themeManager)
+        }
     }
     
-    private func addNewProject() {
-        let titleFormat = LocalizationManager.shared.localizedString("NewProjectTitle")
-        let newTitle = String(format: titleFormat, projectManager.projects.count + 1)
-        let newProject = Project(
-            title: newTitle,
-            description: LocalizationManager.shared.localizedString("NewProjectDescription"),
-            iconName: "folder.fill",
-            iconColor: "green"
-        )
-        
-        Task {
-            try? await projectManager.createProject(newProject)
+    // Empty state view
+    var emptyStateView: some View {
+        VStack(spacing: 24) {
+            Spacer().frame(height: 60)
+            
+            Image(systemName: "folder.badge.plus")
+                .font(.system(size: 70))
+                .foregroundColor(themeManager.secondaryTextColor.opacity(0.5))
+            
+            VStack(spacing: 8) {
+                Text(searchText.isEmpty ? localization.localizedString("NoProjectsYet") : localization.localizedString("ProjectNotFound"))
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.textColor)
+                
+                Text(searchText.isEmpty ? localization.localizedString("NoProjectsYetMessage") : localization.localizedString("ProjectNotFoundMessage"))
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.secondaryTextColor)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
+            if searchText.isEmpty {
+                Button(action: {
+                    showCreateProject = true
+                }) {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text(localization.localizedString("CreateNewProject"))
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 14)
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+                .padding(.top, 8)
+            }
+            Spacer()
         }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -357,11 +414,5 @@ struct ProjectListView_Previews: PreviewProvider {
         ProjectListView()
             .environmentObject(ThemeManager.shared)
             .preferredColorScheme(.light)
-        
-        ProjectListView()
-            .environmentObject(ThemeManager.shared)
-            .preferredColorScheme(.dark)
     }
 }
-
-

@@ -16,6 +16,11 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPasswordMismatchAlert = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case name, email, password, confirmPassword
+    }
     
     // Yeşil raptiye rengi
     let greenAccent = Color(red: 0.40, green: 0.84, blue: 0.55)
@@ -42,6 +47,9 @@ struct SignUpView: View {
             .background(darkBackground)
             .ignoresSafeArea()
             .navigationBarHidden(true)
+            .onTapGesture {
+                hideKeyboard()
+            }
             .alert(localization.localizedString("PasswordsDoNotMatch"), isPresented: $showPasswordMismatchAlert) {
                 Button(localization.localizedString("OK"), role: .cancel) { }
             } message: {
@@ -122,6 +130,9 @@ struct SignUpView: View {
                 keyboardType: .default,
                 systemImage: "person"
             )
+            .focused($focusedField, equals: .name)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .email }
             
             // Email Field
             CustomTextField(
@@ -130,6 +141,9 @@ struct SignUpView: View {
                 keyboardType: .emailAddress,
                 systemImage: "envelope"
             )
+            .focused($focusedField, equals: .email)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .password }
             
             // Password Field
             CustomSecureField(
@@ -137,6 +151,9 @@ struct SignUpView: View {
                 text: $password,
                 systemImage: "lock"
             )
+            .focused($focusedField, equals: .password)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .confirmPassword }
             
             // Confirm Password Field
             CustomSecureField(
@@ -144,6 +161,13 @@ struct SignUpView: View {
                 text: $confirmPassword,
                 systemImage: "lock"
             )
+            .focused($focusedField, equals: .confirmPassword)
+            .submitLabel(.go)
+            .onSubmit {
+                Task {
+                    await signUp()
+                }
+            }
             
             // Sign Up Button - Yeşil
             Button(action: {
@@ -190,6 +214,8 @@ struct SignUpView: View {
     
     // MARK: - Functions
     private func signUp() async {
+        hideKeyboard()
+        
         // Şifrelerin eşleşip eşleşmediğini kontrol et
         guard password == confirmPassword else {
             showPasswordMismatchAlert = true
@@ -203,6 +229,11 @@ struct SignUpView: View {
         if authViewModel.userSession != nil {
             presentationMode.wrappedValue.dismiss()
         }
+    }
+    
+    private func hideKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

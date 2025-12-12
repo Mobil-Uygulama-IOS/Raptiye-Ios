@@ -65,3 +65,104 @@
 "DueDate" = "Bitiş Tarihi";
 "Progress" = "İlerleme";
 "Description" = "Açıklama";
+
+// Add Team Member
+"AddTeamMember" = "Ekip Üyesi Ekle";
+"AddTeamMemberToProject" = "Projeye Ekip Üyesi Ekle";
+"SearchByEmail" = "Email adresi ile kullanıcı arayın";
+"EmailAddress" = "Email Adresi";
+"SearchUser" = "Kullanıcı Ara";
+"AddToProject" = "Projeye Ekle";
+"CurrentTeamMembers" = "Mevcut Ekip Üyeleri";
+"NoTeamMembers" = "Henüz ekip üyesi yok";
+"Leader" = "Lider";
+"Close" = "Kapat";
+"Error" = "Hata";
+"Success" = "Başarılı";
+"OK" = "Tamam";
+"TeamMemberAddedSuccess" = "Ekip üyesi başarıyla eklendi!";
+"UserNotFound" = "Bu email adresiyle kayıtlı kullanıcı bulunamadı.\n\nNot: Kullanıcının uygulamaya kayıt olması gerekiyor.";
+"SearchError" = "Arama sırasında bir hata oluştu";
+
+// Edit and Delete Project
+"EditProject" = "Projeyi Düzenle";
+"DeleteProject" = "Projeyi Sil";
+"DeleteProjectConfirmation" = "Bu projeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.";
+"SaveChanges" = "Değişiklikleri Kaydet";
+"CreateNewProject" = "Yeni Proje Oluştur";
+"SaveAndCreate" = "Kaydet ve Oluştur";
+"Delete" = "Sil";
+
+// Project Detail View
+"Progress" = "İlerleme";
+"Team" = "Ekip";
+"AddMember" = "Üye Ekle";
+"TeamLeader" = "Ekip Lideri";
+"TeamMembers" = "Ekip Üyeleri";
+"Tasks" = "Görevler";
+"NoTasksYet" = "Henüz görev eklenmemiş";
+
+// Settings Views
+"PushNotifications" = "Bildirimler";
+"EnablePushNotifications" = "Push Bildirimlerini Etkinleştir";
+"ReceiveNotificationsDevice" = "Cihazınızda bildirim alın";
+"TaskReminders" = "Görev Hatırlatıcıları";
+"GetRemindedUpcomingTasks" = "Yaklaşan görevler için hatırlatma alın";
+"ProjectUpdates" = "Proje Güncellemeleri";
+"StayUpdatedProjectChanges" = "Proje değişiklikleri hakkında güncel kalın";
+"TeamActivity" = "Ekip Aktivitesi";
+"GetNotifiedTeamActions" = "Ekip üyesi eylemleri hakkında bildirim alın";
+"EmailNotifications" = "E-posta Bildirimleri";
+"ReceiveUpdatesEmail" = "Güncellemeleri e-posta ile alın";
+"Loading" = "Yükleniyor...";
+
+"GettingStarted" = "Başlarken";
+"HowCreateProject" = "Nasıl proje oluştururum?";
+"HowCreateProjectAnswer" = "Projeler ekranındaki '+' butonuna tıklayarak yeni bir proje oluşturun. Proje detaylarını doldurun ve görevler ekleyin.";
+"HowAddTeamMembers" = "Nasıl ekip üyesi eklerim?";
+"HowAddTeamMembersAnswer" = "Bir projeyi açın, 'Üye Ekle' butonuna tıklayın ve kullanıcıları e-posta adreslerine göre arayın.";
+"HowAddTasks" = "Nasıl görev eklerim?";
+"HowAddTasksAnswer" = "Proje detaylarında, Görevler bölümündeki '+' simgesine tıklayarak yeni bir görev ekleyin.";
+
+"ManagingProjects" = "Projeleri Yönetme";
+"HowEditProject" = "Bir projeyi nasıl düzenlerim?";
+"HowEditProjectAnswer" = "Projeyi açın, sağ üstteki menü simgesine (•••) tıklayın ve 'Projeyi Düzenle' seçeneğini seçin.";
+"HowDeleteProject" = "Bir projeyi nasıl silerim?";
+"HowDeleteProjectAnswer" = "Projeyi açın, menü simgesine (•••) tıklayın, 'Projeyi Sil' seçeneğini seçin ve onaylayın.";
+"HowTrackProgress" = "İlerlemeyi nasıl takip ederim?";
+"HowTrackProgressAnswer" = "Proje ilerlemesi tamamlanan görevlere göre otomatik olarak hesaplanır. Grafik simgesine tıklayarak detaylı analitiği görüntüleyin.";
+
+"AccountSettings" = "Hesap ve Ayarlar";
+"HowChangeProfile" = "Profilimi nasıl değiştiririm?";
+"HowChangeProfileAnswer" = "Ayarlar sekmesine gidin, bilgilerinizi düzenlemek için en üstteki profil kartınıza tıklayın.";
+"HowChangeLanguage" = "Dili nasıl değiştiririm?";
+"HowChangeLanguageAnswer" = "Ayarlar > Dil'e gidin ve Türkçe veya İngilizce'yi seçin.";
+"HowEnableDarkMode" = "Karanlık modu nasıl etkinleştiririm?";
+"HowEnableDarkModeAnswer" = "Ayarlar'a gidin ve 'Koyu Tema' anahtarını açın.";
+
+"NeedMoreHelp" = "Daha Fazla Yardıma İhtiyacınız Var mı?";
+"EmailSupport" = "E-posta Desteği";
+
+"AboutRaptiye" = "Raptiye Hakkında";
+"AboutRaptiyeDescription" = "Raptiye, ekiplerin etkili bir şekilde işbirliği yapmasına, görevleri takip etmesine ve hedeflerine birlikte ulaşmasına yardımcı olan modern bir proje yönetimi uygulamasıdır.";
+"KeyFeatures" = "Temel Özellikler";
+"ProjectManagement" = "Proje Yönetimi";
+"CreateManageMultipleProjects" = "Birden fazla proje oluşturun ve yönetin";
+"TaskTracking" = "Görev Takibi";
+"KeepTrackAllTasks" = "Tüm görevlerinizi takip edin";
+"TeamCollaboration" = "Ekip İşbirliği";
+"WorkTogetherTeam" = "Ekibinizle birlikte çalışın";
+"Analytics" = "Analizler";
+"TrackProgressDetailedAnalytics" = "Detaylı analizlerle ilerlemeyi takip edin";
+"MultiLanguage" = "Çok Dil";
+"SupportTurkishEnglish" = "Türkçe ve İngilizce desteği";
+"PrivacyPolicy" = "Gizlilik Politikası";
+"TermsOfService" = "Hizmet Şartları";
+"AllRightsReserved" = "© 2025 Raptiye. Tüm hakları saklıdır.";
+"Version" = "Versiyon 1.0.0";
+
+// Empty States
+"NoProjectsYet" = "Henüz Proje Yok";
+"NoProjectsYetMessage" = "Yeni bir proje oluşturmak için + butonuna tıklayın";
+"ProjectNotFound" = "Proje Bulunamadı";
+"ProjectNotFoundMessage" = "Arama kriterlerinize uygun proje bulunamadı";

@@ -43,7 +43,8 @@ struct ProjectDashboardView: View {
                             .opacity(0)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
+                    .padding(.top, 50)
+                    .padding(.bottom, 16)
                     
                     // Custom Tab Bar
                     HStack(spacing: 0) {
@@ -91,6 +92,7 @@ struct ProjectDashboardView: View {
                 }
             }
             .navigationBarHidden(true)
+            .edgesIgnoringSafeArea(.all)
             .sheet(isPresented: $showProjectDetail) {
                 if let selectedProject = selectedProject,
                    let index = projectManager.projects.firstIndex(where: { $0.id == selectedProject.id }) {

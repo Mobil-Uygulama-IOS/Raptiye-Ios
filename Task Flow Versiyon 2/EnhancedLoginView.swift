@@ -16,6 +16,11 @@ struct EnhancedLoginView: View {
     @State private var isShowingForgotPassword = false
     @State private var email = ""
     @State private var password = ""
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case email, password
+    }
     
     // Yeşil raptiye rengi
     let greenAccent = Color(red: 0.40, green: 0.84, blue: 0.55)
@@ -41,6 +46,9 @@ struct EnhancedLoginView: View {
             Color(red: 0.11, green: 0.13, blue: 0.16)
         )
         .ignoresSafeArea()
+        .onTapGesture {
+            hideKeyboard()
+        }
         .sheet(isPresented: $isShowingSignUp) {
             SignUpView()
         }
@@ -121,6 +129,11 @@ struct EnhancedLoginView: View {
                 keyboardType: .emailAddress,
                 systemImage: "envelope"
             )
+            .focused($focusedField, equals: .email)
+            .submitLabel(.next)
+            .onSubmit {
+                focusedField = .password
+            }
             
             // Password Field
             CustomSecureField(
@@ -128,6 +141,13 @@ struct EnhancedLoginView: View {
                 text: $password,
                 systemImage: "lock"
             )
+            .focused($focusedField, equals: .password)
+            .submitLabel(.go)
+            .onSubmit {
+                Task {
+                    await signIn()
+                }
+            }
             
             // Forgot Password Button
             HStack {
@@ -185,7 +205,13 @@ struct EnhancedLoginView: View {
     
     // MARK: - Functions
     private func signIn() async {
+        hideKeyboard()
         await authViewModel.signIn(email: email, password: password)
+    }
+    
+    private func hideKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

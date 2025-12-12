@@ -2,17 +2,33 @@ import SwiftUI
 
 struct ProjectDetailView: View {
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var projectManager: ProjectManager
+    @StateObject private var localization = LocalizationManager.shared
     @Binding var project: Project
     @State private var selectedTask: ProjectTask?
     @State private var showAnalytics = false
     @State private var showAddTask = false
+    @State private var showAddTeamMember = false
+    @State private var showEditProject = false
+    @State private var showDeleteConfirmation = false
+    @State private var showActionSheet = false
     
     var teamMembers: [User] {
         var members: [User] = []
+        
+        // Önce proje lideri varsa ekle
         if let leader = project.teamLeader {
             members.append(leader)
         }
-        members.append(contentsOf: project.teamMembers)
+        
+        // Diğer ekip üyelerini ekle (proje lideri değilse)
+        for member in project.teamMembers {
+            // Duplicate kontrolü - zaten listede yoksa ekle
+            if !members.contains(where: { $0.uid == member.uid }) {
+                members.append(member)
+            }
+        }
+        
         return members
     }
     
@@ -51,24 +67,36 @@ struct ProjectDetailView: View {
                     
                     Spacer()
                     
-                    Text("Proje Detayları")
+                    Text(localization.localizedString("ProjectDetails"))
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                     
                     Spacer()
                     
-                    // Analytics button
-                    Button(action: {
-                        showAnalytics = true
-                    }) {
-                        Image(systemName: "chart.bar.fill")
-                            .font(.title3)
-                            .foregroundColor(.white)
+                    HStack(spacing: 16) {
+                        // Analytics button
+                        Button(action: {
+                            showAnalytics = true
+                        }) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
+                        
+                        // More menu button
+                        Button(action: {
+                            showActionSheet = true
+                        }) {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.title3)
+                                .foregroundColor(.white)
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 16)
                 
                 // Content
                 ScrollView {
@@ -94,7 +122,7 @@ struct ProjectDetailView: View {
                             if project.tasks.count > 0 {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
-                                        Text("İlerleme")
+                                        Text(localization.localizedString("Progress"))
                                             .font(.system(size: 14))
                                             .foregroundColor(.gray)
                                         
@@ -128,14 +156,29 @@ struct ProjectDetailView: View {
                         
                         // Ekip Section
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Ekip")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.white)
+                            HStack {
+                                Text(localization.localizedString("Team"))
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    showAddTeamMember = true
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "person.badge.plus")
+                                        Text(localization.localizedString("AddMember"))
+                                    }
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(red: 0.40, green: 0.84, blue: 0.55))
+                                }
+                            }
                             
                             // Ekip Lideri
                             if let leader = projectLeader {
                                 VStack(alignment: .leading, spacing: 10) {
-                                    Text("Ekip Lideri")
+                                    Text(localization.localizedString("TeamLeader"))
                                         .font(.system(size: 14))
                                         .foregroundColor(.gray)
                                     
@@ -146,7 +189,7 @@ struct ProjectDetailView: View {
                             // Ekip Üyeleri
                             if teamMembers.count > 1 {
                                 VStack(alignment: .leading, spacing: 10) {
-                                    Text("Ekip Üyeleri")
+                                    Text(localization.localizedString("TeamMembers"))
                                         .font(.system(size: 14))
                                         .foregroundColor(.gray)
                                     
@@ -160,7 +203,7 @@ struct ProjectDetailView: View {
                         // Görevler Section
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
-                                Text("Görevler")
+                                Text(localization.localizedString("Tasks"))
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(.white)
                                 
@@ -181,7 +224,7 @@ struct ProjectDetailView: View {
                                         .font(.system(size: 40))
                                         .foregroundColor(.gray)
                                     
-                                    Text("Henüz görev eklenmemiş")
+                                    Text(localization.localizedString("NoTasksYet"))
                                         .font(.system(size: 15))
                                         .foregroundColor(.gray)
                                 }
@@ -218,6 +261,42 @@ struct ProjectDetailView: View {
                 projectId: project.id,
                 availableAssignees: teamMembers
             )
+        }
+        .sheet(isPresented: $showAddTeamMember) {
+            AddTeamMemberView(project: project)
+        }
+        .sheet(isPresented: $showEditProject) {
+            CreateProjectView(projectToEdit: project)
+        }
+        .confirmationDialog("", isPresented: $showActionSheet) {
+            Button(localization.localizedString("EditProject")) {
+                showEditProject = true
+            }
+            Button(localization.localizedString("DeleteProject"), role: .destructive) {
+                showDeleteConfirmation = true
+            }
+            Button(localization.localizedString("Cancel"), role: .cancel) {}
+        }
+        .alert(localization.localizedString("DeleteProject"), isPresented: $showDeleteConfirmation) {
+            Button(localization.localizedString("Cancel"), role: .cancel) {}
+            Button(localization.localizedString("Delete"), role: .destructive) {
+                deleteProject()
+            }
+        } message: {
+            Text(localization.localizedString("DeleteProjectConfirmation"))
+        }
+    }
+    
+    private func deleteProject() {
+        Task {
+            do {
+                try await projectManager.deleteProject(project)
+                await MainActor.run {
+                    presentationMode.wrappedValue.dismiss()
+                }
+            } catch {
+                print("❌ Proje silme hatası: \(error)")
+            }
         }
     }
 }

@@ -3,27 +3,37 @@ import SwiftUI
 struct CreateProjectView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var projectManager: ProjectManager
+    @EnvironmentObject var themeManager: ThemeManager
+    @StateObject private var localization = LocalizationManager.shared
     var onProjectCreated: ((Project) -> Void)?
+    var projectToEdit: Project?
     
     @State private var projectTitle: String = ""
     @State private var projectDescription: String = ""
     @State private var dueDate: Date = Date()
-    @State private var selectedMembers: [User] = []
-    @State private var selectedLeader: User?
     @State private var taskTitle: String = ""
     @State private var tasks: [String] = []
     @State private var showDatePicker = false
-    @State private var showMemberPicker = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @FocusState private var focusedField: Field?
     
-    let availableMembers = User.sampleUsers
+    private var isEditMode: Bool {
+        projectToEdit != nil
+    }
+    
+    enum Field {
+        case title, description, task
+    }
     
     var body: some View {
         ZStack {
-            // Dark background
-            Color(red: 0.11, green: 0.13, blue: 0.16)
+            // Background with theme
+            themeManager.backgroundColor
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Header
@@ -33,14 +43,14 @@ struct CreateProjectView: View {
                     }) {
                         Image(systemName: "xmark")
                             .font(.title3)
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.textColor)
                     }
                     
                     Spacer()
                     
-                    Text("Yeni Proje Oluştur")
+                    Text(isEditMode ? localization.localizedString("EditProject") : localization.localizedString("CreateNewProject"))
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.textColor)
                     
                     Spacer()
                     
@@ -50,7 +60,8 @@ struct CreateProjectView: View {
                         .opacity(0)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 16)
                 
                 // Content
                 ScrollView {
@@ -59,32 +70,37 @@ struct CreateProjectView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Proje Başlığı")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                             
                             TextField("Örn: Web Sitesi Tasarımı", text: $projectTitle)
                                 .font(.system(size: 16))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                                 .padding(16)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                        .fill(themeManager.cardBackground)
                                 )
+                                .focused($focusedField, equals: .title)
+                                .submitLabel(.next)
+                                .onSubmit {
+                                    focusedField = .description
+                                }
                         }
                         
                         // Proje Açıklaması
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Proje Açıklaması")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                             
                             TextEditor(text: $projectDescription)
                                 .font(.system(size: 16))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                                 .frame(minHeight: 100)
                                 .padding(12)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                        .fill(themeManager.cardBackground)
                                 )
                                 .scrollContentBackground(.hidden)
                         }
@@ -93,9 +109,10 @@ struct CreateProjectView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Teslim Tarihi")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                             
                             Button(action: {
+                                hideKeyboard()
                                 showDatePicker.toggle()
                             }) {
                                 HStack {
@@ -104,162 +121,38 @@ struct CreateProjectView: View {
                                     
                                     Text(formattedDate(dueDate))
                                         .font(.system(size: 16))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(themeManager.textColor)
                                     
                                     Spacer()
                                     
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(themeManager.secondaryTextColor)
                                 }
                                 .padding(16)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                        .fill(themeManager.cardBackground)
                                 )
                             }
                             
                             if showDatePicker {
                                 DatePicker("", selection: $dueDate, displayedComponents: .date)
                                     .datePickerStyle(.graphical)
-                                    .colorScheme(.dark)
+                                    .colorScheme(themeManager.isDarkMode ? .dark : .light)
                                     .padding()
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                            .fill(themeManager.cardBackground)
                                     )
                             }
                         }
                         
-                        // Ekip Üyeleri
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Ekip Üyeleri")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
-                            
-                            // Selected members
-                            if !selectedMembers.isEmpty {
-                                VStack(spacing: 8) {
-                                    ForEach(selectedMembers) { member in
-                                        HStack(spacing: 12) {
-                                            Circle()
-                                                .fill(Color.blue.opacity(0.3))
-                                                .frame(width: 36, height: 36)
-                                                .overlay(
-                                                    Text(member.initials)
-                                                        .font(.system(size: 14, weight: .semibold))
-                                                        .foregroundColor(.blue)
-                                                )
-                                            
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(member.displayName ?? "Unknown")
-                                                    .font(.system(size: 14, weight: .medium))
-                                                    .foregroundColor(.white)
-                                                
-                                                Text(member.email ?? "")
-                                                    .font(.system(size: 12))
-                                                    .foregroundColor(.gray)
-                                            }
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: {
-                                                selectedMembers.removeAll { $0.id == member.id }
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.gray)
-                                            }
-                                        }
-                                        .padding(12)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color(red: 0.2, green: 0.22, blue: 0.26))
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            // Add member button
-                            Button(action: {
-                                showMemberPicker.toggle()
-                            }) {
-                                HStack {
-                                    Image(systemName: "plus.circle.fill")
-                                        .foregroundColor(.blue)
-                                    
-                                    Text("Ekip Üyesi Ekle")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.blue)
-                                    
-                                    Spacer()
-                                }
-                                .padding(16)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.blue, lineWidth: 2)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
-                                        )
-                                )
-                            }
-                            
-                            // Member picker
-                            if showMemberPicker {
-                                VStack(spacing: 8) {
-                                    ForEach(availableMembers.filter { member in
-                                        !selectedMembers.contains(where: { $0.id == member.id })
-                                    }) { member in
-                                        Button(action: {
-                                            selectedMembers.append(member)
-                                            showMemberPicker = false
-                                        }) {
-                                            HStack(spacing: 12) {
-                                                Circle()
-                                                    .fill(Color.blue.opacity(0.3))
-                                                    .frame(width: 36, height: 36)
-                                                    .overlay(
-                                                        Text(member.initials)
-                                                            .font(.system(size: 14, weight: .semibold))
-                                                            .foregroundColor(.blue)
-                                                    )
-                                                
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    Text(member.displayName ?? "Unknown")
-                                                        .font(.system(size: 14, weight: .medium))
-                                                        .foregroundColor(.white)
-                                                    
-                                                    Text(member.email ?? "")
-                                                        .font(.system(size: 12))
-                                                        .foregroundColor(.gray)
-                                                }
-                                                
-                                                Spacer()
-                                                
-                                                Image(systemName: "plus.circle")
-                                                    .foregroundColor(.blue)
-                                            }
-                                            .padding(12)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .fill(Color(red: 0.2, green: 0.22, blue: 0.26))
-                                            )
-                                        }
-                                    }
-                                }
-                                .padding(12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
-                                )
-                            }
-                        }
-                        
-                        // Görevler
+                        // Görevler (Opsiyonel)
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Görevler")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                             
                             // Task list
                             if !tasks.isEmpty {
@@ -272,7 +165,7 @@ struct CreateProjectView: View {
                                             
                                             Text(task)
                                                 .font(.system(size: 14))
-                                                .foregroundColor(.white)
+                                                .foregroundColor(themeManager.textColor)
                                             
                                             Spacer()
                                             
@@ -280,13 +173,13 @@ struct CreateProjectView: View {
                                                 tasks.remove(at: index)
                                             }) {
                                                 Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.gray)
+                                                    .foregroundColor(themeManager.secondaryTextColor)
                                             }
                                         }
                                         .padding(12)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color(red: 0.2, green: 0.22, blue: 0.26))
+                                                .fill(themeManager.searchBackground)
                                         )
                                     }
                                 }
@@ -296,7 +189,8 @@ struct CreateProjectView: View {
                             HStack(spacing: 12) {
                                 TextField("Yeni görev ekle...", text: $taskTitle)
                                     .font(.system(size: 16))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.textColor)
+                                    .focused($focusedField, equals: .task)
                                     .submitLabel(.done)
                                     .onSubmit {
                                         addTask()
@@ -315,7 +209,7 @@ struct CreateProjectView: View {
                             .padding(16)
                             .background(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                    .fill(themeManager.cardBackground)
                             )
                         }
                         
@@ -323,7 +217,7 @@ struct CreateProjectView: View {
                         Button(action: {
                             createProject()
                         }) {
-                            Text("Kaydet ve Oluştur")
+                            Text(isEditMode ? localization.localizedString("SaveChanges") : localization.localizedString("SaveAndCreate"))
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -348,6 +242,14 @@ struct CreateProjectView: View {
                 dismissButton: .default(Text("Tamam"))
             )
         }
+        .onAppear {
+            if let project = projectToEdit {
+                projectTitle = project.title
+                projectDescription = project.description
+                dueDate = project.dueDate ?? Date()
+                tasks = project.tasks.map { $0.title }
+            }
+        }
     }
     
     // MARK: - Functions
@@ -363,9 +265,11 @@ struct CreateProjectView: View {
         guard !taskTitle.isEmpty else { return }
         tasks.append(taskTitle)
         taskTitle = ""
+        hideKeyboard()
     }
     
     private func createProject() {
+        hideKeyboard()
         // Validation
         guard !projectTitle.isEmpty else {
             alertMessage = "Lütfen proje başlığını girin."
@@ -379,55 +283,88 @@ struct CreateProjectView: View {
             return
         }
         
-        // Create tasks
-        let projectTasks = tasks.enumerated().map { index, taskTitle in
-            // TaskAssignee oluştur (geçici çözüm)
-            let assigneeUser = selectedMembers.indices.contains(index % max(selectedMembers.count, 1)) ? selectedMembers[index % max(selectedMembers.count, 1)] : nil
-            let taskAssignee = assigneeUser != nil ? TaskAssignee(
-                name: assigneeUser?.displayName ?? "Unknown",
-                avatarName: "",
-                email: assigneeUser?.email ?? ""
-            ) : nil
+        if let existingProject = projectToEdit {
+            // Edit mode - update existing project
+            let projectTasks = tasks.map { taskTitle in
+                ProjectTask(
+                    title: taskTitle,
+                    description: "",
+                    assignee: nil,
+                    dueDate: dueDate,
+                    isCompleted: false
+                )
+            }
             
-            return ProjectTask(
-                title: taskTitle,
-                description: "",
-                assignee: taskAssignee,
-                dueDate: dueDate,
-                isCompleted: false
-            )
-        }
-        
-        // Create new project
-        let newProject = Project(
-            title: projectTitle,
-            description: projectDescription,
-            iconName: "list.bullet",
-            iconColor: "blue",
-            status: .todo,
-            dueDate: dueDate,
-            tasks: projectTasks,
-            teamLeader: selectedLeader ?? selectedMembers.first,
-            teamMembers: selectedMembers
-        )
-        
-        // Save to Firestore
-        Task {
-            do {
-                try await projectManager.createProject(newProject)
-                
-                // Notify parent view about new project
-                onProjectCreated?(newProject)
-                
-                // Close view
-                await MainActor.run {
-                    presentationMode.wrappedValue.dismiss()
+            var updatedProject = existingProject
+            updatedProject.title = projectTitle
+            updatedProject.description = projectDescription
+            updatedProject.dueDate = dueDate
+            // Only update tasks if they were modified in this view
+            if tasks.count > 0 {
+                updatedProject.tasks = projectTasks
+            }
+            
+            // Update in Firestore
+            Task {
+                do {
+                    try await projectManager.updateProject(updatedProject)
+                    
+                    // Close view
+                    await MainActor.run {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                } catch {
+                    alertMessage = "Proje güncellenemedi: \(error.localizedDescription)"
+                    showAlert = true
                 }
-            } catch {
-                alertMessage = "Proje oluşturulamadı: \(error.localizedDescription)"
-                showAlert = true
+            }
+        } else {
+            // Create mode - create new project
+            let projectTasks = tasks.map { taskTitle in
+                ProjectTask(
+                    title: taskTitle,
+                    description: "",
+                    assignee: nil,
+                    dueDate: dueDate,
+                    isCompleted: false
+                )
+            }
+            
+            let newProject = Project(
+                title: projectTitle,
+                description: projectDescription,
+                iconName: "list.bullet",
+                iconColor: "blue",
+                status: .todo,
+                dueDate: dueDate,
+                tasks: projectTasks,
+                teamLeader: nil,
+                teamMembers: []
+            )
+            
+            // Save to Firestore
+            Task {
+                do {
+                    try await projectManager.createProject(newProject)
+                    
+                    // Notify parent view about new project
+                    onProjectCreated?(newProject)
+                    
+                    // Close view
+                    await MainActor.run {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                } catch {
+                    alertMessage = "Proje oluşturulamadı: \(error.localizedDescription)"
+                    showAlert = true
+                }
             }
         }
+    }
+    
+    private func hideKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 

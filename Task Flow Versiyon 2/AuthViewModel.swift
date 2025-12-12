@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 import FirebaseAuth
+import FirebaseFirestore
 
 // MARK: - AuthViewModel (Firebase)
 
@@ -15,6 +16,8 @@ final class AuthViewModel: ObservableObject {
     @Published var userSession: MockUser?
     @Published var errorMessage: String?
     @Published var isLoading = false
+    
+    private let db = Firestore.firestore()
     
     init() {
         // Firebase'den mevcut kullanıcıyı yükle
@@ -56,6 +59,9 @@ final class AuthViewModel: ObservableObject {
             print("✅ User ID: \(user.uid)")
             print("✅ Email: \(user.email ?? "N/A")")
             
+            // Kullanıcı Firestore'da yoksa ekle
+            await ensureUserInFirestore(user: authResult.user)
+            
             // NOT: ProjectManager listener'ı MainAppView'de başlatılacak
         } catch let error as NSError {
             let errorCode = error.code
@@ -94,6 +100,20 @@ final class AuthViewModel: ObservableObject {
             try await changeRequest.commitChanges()
             
             print("✅ Display name güncellendi: \(fullName)")
+            
+            // Firestore'a kullanıcı bilgilerini kaydet
+            let userData: [String: Any] = [
+                "uid": authResult.user.uid,
+                "email": email.lowercased(),
+                "displayName": fullName,
+                "createdAt": Timestamp(date: Date())
+            ]
+            
+            try await db.collection("users")
+                .document(authResult.user.uid)
+                .setData(userData)
+            
+            print("✅ Kullanıcı Firestore'a kaydedildi")
             
             let user = MockUser(
                 uid: authResult.user.uid,
@@ -149,6 +169,44 @@ final class AuthViewModel: ObservableObject {
         isLoading = false
     }
     
+    // MARK: - Ensure User in Firestore
+    private func ensureUserInFirestore(user: FirebaseAuth.User) async {
+        do {
+            let docRef = db.collection("users").document(user.uid)
+            let document = try await docRef.getDocument()
+            
+            if !document.exists {
+                print("📝 Kullanıcı Firestore'da yok, ekleniyor...")
+                
+                let userData: [String: Any] = [
+                    "uid": user.uid,
+                    "email": (user.email ?? "").lowercased(),
+                    "displayName": user.displayName ?? "Kullanıcı",
+                    "createdAt": Timestamp(date: Date())
+                ]
+                
+                try await docRef.setData(userData)
+                print("✅ Kullanıcı Firestore'a eklendi")
+            } else {
+                // Kullanıcı var ama email field'ı eksik mi?
+                let data = document.data()
+                if data?["email"] == nil || (data?["email"] as? String)?.isEmpty == true {
+                    print("⚠️ Email field'ı eksik, güncelleniyor...")
+                    
+                    try await docRef.updateData([
+                        "email": (user.email ?? "").lowercased()
+                    ])
+                    
+                    print("✅ Email field'ı eklendi: \(user.email?.lowercased() ?? "")")
+                } else {
+                    print("✅ Kullanıcı zaten Firestore'da mevcut ve email var")
+                }
+            }
+        } catch {
+            print("❌ Firestore kontrol hatası: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Update Display Name (Firebase)
     @MainActor
     func updateDisplayName(_ name: String) async {
@@ -181,6 +239,44 @@ final class AuthViewModel: ObservableObject {
                 print("✅ Şifre sıfırlama e-postası gönderildi: \(email)")
                 completion(true)
             }
+        }
+    }
+    
+    // MARK: - Delete Account (Firebase)
+    @MainActor
+    func deleteAccount() async -> Bool {
+        guard let currentUser = Auth.auth().currentUser else {
+            print("❌ Silinecek kullanıcı bulunamadı")
+            return false
+        }
+        
+        let userId = currentUser.uid
+        
+        do {
+            // 1. Kullanıcının Firestore'daki verilerini sil
+            let db = Firestore.firestore()
+            try await db.collection("users").document(userId).delete()
+            print("✅ Firestore kullanıcı verisi silindi: \(userId)")
+            
+            // 2. Firebase Authentication'dan kullanıcıyı sil
+            try await currentUser.delete()
+            print("✅ Firebase Auth kullanıcısı silindi: \(userId)")
+            
+            // 3. Local session'ı temizle
+            userSession = nil
+            
+            return true
+        } catch let error as NSError {
+            print("❌ Hesap silme hatası: \(error.localizedDescription)")
+            
+            // Eğer yeniden giriş gerekiyorsa (requires-recent-login hatası)
+            if error.code == AuthErrorCode.requiresRecentLogin.rawValue {
+                errorMessage = "Güvenlik nedeniyle hesabınızı silmek için yeniden giriş yapmanız gerekiyor."
+            } else {
+                errorMessage = "Hesap silme işlemi başarısız oldu: \(error.localizedDescription)"
+            }
+            
+            return false
         }
     }
 }

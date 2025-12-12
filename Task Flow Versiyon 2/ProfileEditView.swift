@@ -1,8 +1,10 @@
 import SwiftUI
+import SafariServices
 
 struct ProfileEditView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var themeManager: ThemeManager
     
     @State private var displayName: String = ""
     @State private var email: String = ""
@@ -11,12 +13,22 @@ struct ProfileEditView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var showDeleteConfirmation = false
+    @State private var showPrivacyPolicy = false
+    @State private var showTermsOfService = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case displayName, bio
+    }
     
     var body: some View {
         ZStack {
-            // Dark background
-            Color(red: 0.11, green: 0.13, blue: 0.16)
+            // Background with theme
+            themeManager.backgroundColor
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Header
@@ -26,14 +38,14 @@ struct ProfileEditView: View {
                     }) {
                         Image(systemName: "xmark")
                             .font(.title3)
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.textColor)
                     }
                     
                     Spacer()
                     
                     Text("Profil Bilgileri")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.textColor)
                     
                     Spacer()
                     
@@ -42,12 +54,13 @@ struct ProfileEditView: View {
                     }) {
                         Text("Düzenle")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(isLoading ? .gray : .blue)
+                            .foregroundColor(isLoading ? themeManager.secondaryTextColor : .blue)
                     }
                     .disabled(isLoading)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 16)
                 
                 // Content
                 ScrollView {
@@ -66,11 +79,11 @@ struct ProfileEditView: View {
                             
                             Text(displayName.isEmpty ? "Test" : displayName)
                                 .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                             
                             Text(email)
                                 .font(.system(size: 15))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                         }
                         .padding(.top, 20)
                         
@@ -80,31 +93,36 @@ struct ProfileEditView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Ad Soyad")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(themeManager.secondaryTextColor)
                                 
                                 TextField("Ad Soyad", text: $displayName)
                                     .font(.system(size: 16))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.textColor)
                                     .padding(16)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                            .fill(themeManager.cardBackground)
                                     )
+                                    .focused($focusedField, equals: .displayName)
+                                    .submitLabel(.next)
+                                    .onSubmit {
+                                        focusedField = .bio
+                                    }
                             }
                             
                             // E-posta
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("E-posta")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(themeManager.secondaryTextColor)
                                 
                                 TextField("E-posta", text: $email)
                                     .font(.system(size: 16))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.textColor)
                                     .padding(16)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                            .fill(themeManager.cardBackground)
                                     )
                                     .keyboardType(.emailAddress)
                                     .autocapitalization(.none)
@@ -116,18 +134,64 @@ struct ProfileEditView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Hakkımda")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(themeManager.secondaryTextColor)
                                 
                                 TextEditor(text: $bio)
                                     .font(.system(size: 16))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.textColor)
                                     .frame(minHeight: 100)
                                     .padding(12)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                            .fill(themeManager.cardBackground)
                                     )
                                     .scrollContentBackground(.hidden)
+
+                                // Gizlilik Politikası, Hizmet Şartları ve Destek Maili Linkleri
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Button(action: {
+                                        showPrivacyPolicy = true
+                                    }) {
+                                        HStack {
+                                            Text("Gizlilik Politikası")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.blue)
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right.square")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    
+                                    Button(action: {
+                                        showTermsOfService = true
+                                    }) {
+                                        HStack {
+                                            Text("Hizmet Şartları")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.blue)
+                                            Spacer()
+                                            Image(systemName: "arrow.up.right.square")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    
+                                    Button(action: {
+                                        openMailApp()
+                                    }) {
+                                        HStack {
+                                            Text("Destek: raptiyedestek@gmail.com")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.blue)
+                                            Spacer()
+                                            Image(systemName: "envelope")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                }
+                                .padding(.top, 8)
                             }
                         }
                         .padding(.horizontal, 20)
@@ -150,11 +214,11 @@ struct ProfileEditView: View {
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 14))
                                 }
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                                 .padding(16)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                        .fill(themeManager.cardBackground)
                                 )
                             }
                             
@@ -178,7 +242,7 @@ struct ProfileEditView: View {
                                 .padding(16)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                                        .fill(themeManager.cardBackground)
                                 )
                             }
                         }
@@ -218,6 +282,12 @@ struct ProfileEditView: View {
         } message: {
             Text("Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.")
         }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/privacy-policy.html")!)
+        }
+        .sheet(isPresented: $showTermsOfService) {
+            SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/terms-of-service.html")!)
+        }
     }
     
     // MARK: - Functions
@@ -231,6 +301,8 @@ struct ProfileEditView: View {
     }
     
     private func saveProfile() {
+        hideKeyboard()
+        
         guard !displayName.isEmpty else {
             alertMessage = "Lütfen ad soyad alanını doldurun."
             showAlert = true
@@ -270,13 +342,49 @@ struct ProfileEditView: View {
     private func deleteAccount() {
         isLoading = true
         
-        // Simulate account deletion
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isLoading = false
-            // Here you would delete the account from Firebase
-            authViewModel.signOut()
-            presentationMode.wrappedValue.dismiss()
+        Task {
+            let success = await authViewModel.deleteAccount()
+            
+            await MainActor.run {
+                isLoading = false
+                
+                if success {
+                    presentationMode.wrappedValue.dismiss()
+                } else {
+                    alertMessage = "Hesap silme işlemi başarısız oldu. Lütfen tekrar giriş yapıp deneyin."
+                    showAlert = true
+                }
+            }
         }
+    }
+    
+    private func hideKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    private func openMailApp() {
+        let email = "raptiyedestek@gmail.com"
+        let subject = "Destek Talebi"
+        let body = ""
+        
+        let coded = "mailto:\(email)?subject=\(subject)&body=\(body)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+        
+        if let emailURL = URL(string: coded ?? ""), UIApplication.shared.canOpenURL(emailURL) {
+            UIApplication.shared.open(emailURL)
+        }
+    }
+}
+
+// MARK: - SafariView
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        return SFSafariViewController(url: url)
+    }
+    
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {
     }
 }
 

@@ -65,3 +65,104 @@
 "DueDate" = "Due Date";
 "Progress" = "Progress";
 "Description" = "Description";
+
+// Add Team Member
+"AddTeamMember" = "Add Team Member";
+"AddTeamMemberToProject" = "Add Team Member to Project";
+"SearchByEmail" = "Search user by email address";
+"EmailAddress" = "Email Address";
+"SearchUser" = "Search User";
+"AddToProject" = "Add to Project";
+"CurrentTeamMembers" = "Current Team Members";
+"NoTeamMembers" = "No team members yet";
+"Leader" = "Leader";
+"Close" = "Close";
+"Error" = "Error";
+"Success" = "Success";
+"OK" = "OK";
+"TeamMemberAddedSuccess" = "Team member added successfully!";
+"UserNotFound" = "No user found with this email address.\n\nNote: User must be registered in the app.";
+"SearchError" = "An error occurred during search";
+
+// Edit and Delete Project
+"EditProject" = "Edit Project";
+"DeleteProject" = "Delete Project";
+"DeleteProjectConfirmation" = "Are you sure you want to delete this project? This action cannot be undone.";
+"SaveChanges" = "Save Changes";
+"CreateNewProject" = "Create New Project";
+"SaveAndCreate" = "Save and Create";
+"Delete" = "Delete";
+
+// Project Detail View
+"Progress" = "Progress";
+"Team" = "Team";
+"AddMember" = "Add Member";
+"TeamLeader" = "Team Leader";
+"TeamMembers" = "Team Members";
+"Tasks" = "Tasks";
+"NoTasksYet" = "No tasks added yet";
+
+// Settings Views
+"PushNotifications" = "Push Notifications";
+"EnablePushNotifications" = "Enable Push Notifications";
+"ReceiveNotificationsDevice" = "Receive notifications on your device";
+"TaskReminders" = "Task Reminders";
+"GetRemindedUpcomingTasks" = "Get reminded about upcoming tasks";
+"ProjectUpdates" = "Project Updates";
+"StayUpdatedProjectChanges" = "Stay updated on project changes";
+"TeamActivity" = "Team Activity";
+"GetNotifiedTeamActions" = "Get notified about team member actions";
+"EmailNotifications" = "Email Notifications";
+"ReceiveUpdatesEmail" = "Receive updates via email";
+"Loading" = "Loading...";
+
+"GettingStarted" = "Getting Started";
+"HowCreateProject" = "How do I create a project?";
+"HowCreateProjectAnswer" = "Tap the '+' button on the projects screen to create a new project. Fill in the project details and add tasks.";
+"HowAddTeamMembers" = "How do I add team members?";
+"HowAddTeamMembersAnswer" = "Open a project, tap 'Add Member' button, and search for users by their email address.";
+"HowAddTasks" = "How do I add tasks?";
+"HowAddTasksAnswer" = "In project details, tap the '+' icon in the Tasks section to add a new task.";
+
+"ManagingProjects" = "Managing Projects";
+"HowEditProject" = "How do I edit a project?";
+"HowEditProjectAnswer" = "Open the project, tap the menu icon (•••) in the top right, and select 'Edit Project'.";
+"HowDeleteProject" = "How do I delete a project?";
+"HowDeleteProjectAnswer" = "Open the project, tap the menu icon (•••), select 'Delete Project', and confirm.";
+"HowTrackProgress" = "How do I track progress?";
+"HowTrackProgressAnswer" = "Project progress is automatically calculated based on completed tasks. View detailed analytics by tapping the chart icon.";
+
+"AccountSettings" = "Account & Settings";
+"HowChangeProfile" = "How do I change my profile?";
+"HowChangeProfileAnswer" = "Go to Settings tab, tap on your profile card at the top to edit your information.";
+"HowChangeLanguage" = "How do I change language?";
+"HowChangeLanguageAnswer" = "Go to Settings > Language and select Turkish or English.";
+"HowEnableDarkMode" = "How do I enable dark mode?";
+"HowEnableDarkModeAnswer" = "Go to Settings and toggle the 'Dark Mode' switch.";
+
+"NeedMoreHelp" = "Need More Help?";
+"EmailSupport" = "Email Support";
+
+"AboutRaptiye" = "About Raptiye";
+"AboutRaptiyeDescription" = "Raptiye is a modern project management application that helps teams collaborate effectively, track tasks, and achieve their goals together.";
+"KeyFeatures" = "Key Features";
+"ProjectManagement" = "Project Management";
+"CreateManageMultipleProjects" = "Create and manage multiple projects";
+"TaskTracking" = "Task Tracking";
+"KeepTrackAllTasks" = "Keep track of all your tasks";
+"TeamCollaboration" = "Team Collaboration";
+"WorkTogetherTeam" = "Work together with your team";
+"Analytics" = "Analytics";
+"TrackProgressDetailedAnalytics" = "Track progress with detailed analytics";
+"MultiLanguage" = "Multi-language";
+"SupportTurkishEnglish" = "Support for Turkish and English";
+"PrivacyPolicy" = "Privacy Policy";
+"TermsOfService" = "Terms of Service";
+"AllRightsReserved" = "© 2025 Raptiye. All rights reserved.";
+"Version" = "Version 1.0.0";
+
+// Empty States
+"NoProjectsYet" = "No Projects Yet";
+"NoProjectsYetMessage" = "Tap the + button to create a new project";
+"ProjectNotFound" = "Project Not Found";
+"ProjectNotFoundMessage" = "No projects match your search criteria";

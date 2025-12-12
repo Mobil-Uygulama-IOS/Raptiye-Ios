@@ -7,59 +7,33 @@
 
 import SwiftUI
 
-/// Kanban Panosu Ekranı - Android ProjectBoardScreen ile birebir aynı
+/// Kanban Panosu Ekranı - Gerçek proje verilerini gösterir
 struct ProjectBoardView: View {
     @EnvironmentObject var themeManager: ThemeManager
+    @EnvironmentObject var projectManager: ProjectManager
     @Environment(\.presentationMode) var presentationMode
     @State private var selectedTab = 0
-    @State private var tasks: [ProjectTask] = []
     @State private var selectedTask: ProjectTask?
     @State private var showTaskDetail = false
     
     let tabs = ["Yapılacaklar", "Devam Ediyor", "Tamamlandı"]
     let selectedTabColor = Color.blue
     
-    init() {
-        // Örnek görevler yükle
-        _tasks = State(initialValue: [
-            ProjectTask.sampleTask,
-            ProjectTask(
-                title: "Backend API Development",
-                description: "Develop RESTful API endpoints for project and task management.",
-                assignee: ProjectTask.sampleAssignees[1],
-                dueDate: Date().addingTimeInterval(20 * 24 * 60 * 60),
-                isCompleted: false,
-                priority: .high
-            ),
-            ProjectTask(
-                title: "Database Schema Design",
-                description: "Design and implement database schema for storing projects, tasks, and user data.",
-                assignee: ProjectTask.sampleAssignees[0],
-                dueDate: Date().addingTimeInterval(15 * 24 * 60 * 60),
-                isCompleted: false,
-                priority: .medium
-            ),
-            ProjectTask(
-                title: "User Authentication",
-                description: "Implement secure user authentication and authorization.",
-                assignee: ProjectTask.sampleAssignees[2],
-                dueDate: Date().addingTimeInterval(-5 * 24 * 60 * 60),
-                isCompleted: true,
-                priority: .high
-            )
-        ])
+    // Tüm projelerden görevleri topla
+    var allTasks: [ProjectTask] {
+        projectManager.projects.flatMap { $0.tasks }
     }
     
     var filteredTasks: [ProjectTask] {
         switch selectedTab {
-        case 0: // Yapılacaklar
-            return tasks.filter { !$0.isCompleted }
-        case 1: // Devam Ediyor
-            return tasks.filter { !$0.isCompleted }
+        case 0: // Yapılacaklar (To-Do)
+            return allTasks.filter { !$0.isCompleted && $0.priority != .high }
+        case 1: // Devam Ediyor (In Progress - yüksek öncelikli)
+            return allTasks.filter { !$0.isCompleted && $0.priority == .high }
         case 2: // Tamamlandı
-            return tasks.filter { $0.isCompleted }
+            return allTasks.filter { $0.isCompleted }
         default:
-            return tasks
+            return allTasks
         }
     }
     
