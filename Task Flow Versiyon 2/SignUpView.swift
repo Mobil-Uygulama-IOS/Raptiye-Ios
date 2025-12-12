@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SafariServices
 
 struct SignUpView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -16,6 +17,9 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPasswordMismatchAlert = false
+    @State private var agreedToTerms = false
+    @State private var showPrivacyPolicy = false
+    @State private var showTermsOfService = false
     @FocusState private var focusedField: Field?
     
     enum Field {
@@ -61,6 +65,12 @@ struct SignUpView: View {
                 }
             } message: {
                 Text(authViewModel.errorMessage ?? "")
+            }
+            .sheet(isPresented: $showPrivacyPolicy) {
+                SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/privacy-policy.html")!)
+            }
+            .sheet(isPresented: $showTermsOfService) {
+                SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/terms-of-service.html")!)
             }
         }
     }
@@ -169,6 +179,52 @@ struct SignUpView: View {
                 }
             }
             
+            // Terms and Privacy Agreement
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: {
+                    agreedToTerms.toggle()
+                }) {
+                    Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 22))
+                        .foregroundColor(agreedToTerms ? greenAccent : .white.opacity(0.5))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(localization.localizedString("IAgreeToThe"))
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Button(action: {
+                            showPrivacyPolicy = true
+                        }) {
+                            Text(localization.localizedString("PrivacyPolicy"))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(greenAccent)
+                                .underline()
+                        }
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Text(localization.localizedString("AndThe"))
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Button(action: {
+                            showTermsOfService = true
+                        }) {
+                            Text(localization.localizedString("TermsOfService"))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(greenAccent)
+                                .underline()
+                        }
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.top, 8)
+            
             // Sign Up Button - Yeşil
             Button(action: {
                 Task {
@@ -192,8 +248,8 @@ struct SignUpView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: greenAccent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .disabled(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty)
-            .opacity(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty ? 0.6 : 1.0)
+            .disabled(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !agreedToTerms)
+            .opacity(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !agreedToTerms ? 0.6 : 1.0)
             .padding(.top, 16)
             
             // Sign In Option
@@ -235,6 +291,17 @@ struct SignUpView: View {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
+}
+
+// MARK: - Safari View Wrapper
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        return SFSafariViewController(url: url)
+    }
+    
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
 // MARK: - Preview

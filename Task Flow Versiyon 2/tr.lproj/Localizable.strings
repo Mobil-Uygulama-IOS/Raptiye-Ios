@@ -158,6 +158,8 @@
 "SupportTurkishEnglish" = "Türkçe ve İngilizce desteği";
 "PrivacyPolicy" = "Gizlilik Politikası";
 "TermsOfService" = "Hizmet Şartları";
+"IAgreeToThe" = "Kabul ediyorum:";
+"AndThe" = "ve";
 "AllRightsReserved" = "© 2025 Raptiye. Tüm hakları saklıdır.";
 "Version" = "Versiyon 1.0.0";
 
