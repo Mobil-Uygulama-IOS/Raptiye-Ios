@@ -2,6 +2,7 @@ import Foundation
 import FirebaseAuth
 import FirebaseFirestore
 import Combine
+import UserNotifications
 
 // MARK: - Notification Manager
 @MainActor
@@ -18,7 +19,63 @@ final class NotificationManager: ObservableObject {
     private var notificationsListener: ListenerRegistration?
     private var invitationsListener: ListenerRegistration?
     
-    private init() {}
+    private init() {
+        requestNotificationPermission()
+    }
+    
+    // MARK: - Local Notifications
+    
+    func requestNotificationPermission() {
+        Task {
+            do {
+                let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+                if granted {
+                    print("✅ Bildirim izni verildi")
+                    registerForRemoteNotifications()
+                } else {
+                    print("⚠️ Bildirim izni reddedildi")
+                }
+            } catch {
+                print("❌ Bildirim izni hatası: \(error)")
+            }
+        }
+    }
+    
+    @MainActor
+    func registerForRemoteNotifications() {
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+    
+    func sendLocalNotification(title: String, body: String, identifier: String = UUID().uuidString, category: String? = nil) {
+        Task {
+            // Kullanıcının bildirim ayarlarını kontrol et
+            guard await shouldSendLocalNotification() else { return }
+            
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            
+            if let category = category {
+                content.categoryIdentifier = category
+            }
+            
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            
+            do {
+                try await UNUserNotificationCenter.current().add(request)
+                print("✅ Local bildirim gönderildi: \(title)")
+            } catch {
+                print("❌ Local bildirim gönderilemedi: \(error)")
+            }
+        }
+    }
+    
+    private func shouldSendLocalNotification() async -> Bool {
+        let pushEnabled = UserDefaults.standard.bool(forKey: "pushNotifications")
+        return pushEnabled != false // Varsayılan true
+    }
     
     // MARK: - Setup Listeners
     
@@ -40,11 +97,24 @@ final class NotificationManager: ObservableObject {
                 
                 guard let documents = snapshot?.documents else { return }
                 
-                self.notifications = documents.compactMap { doc -> AppNotification? in
-                    try? doc.data(as: AppNotification.self)
+                Task { @MainActor in
+                    let oldCount = self.notifications.count
+                    self.notifications = documents.compactMap { doc -> AppNotification? in
+                        try? doc.data(as: AppNotification.self)
+                    }
+                    
+                    // Yeni bildirim varsa local notification gönder
+                    if !self.notifications.isEmpty && self.notifications.count > oldCount {
+                        let newNotification = self.notifications.first!
+                        self.sendLocalNotification(
+                            title: newNotification.title,
+                            body: newNotification.message,
+                            identifier: newNotification.id
+                        )
+                    }
+                    
+                    self.unreadCount = self.notifications.filter { !$0.isRead }.count
                 }
-                
-                self.unreadCount = self.notifications.filter { !$0.isRead }.count
                 print("🔔 \(self.notifications.count) bildirim yüklendi, \(self.unreadCount) okunmamış")
             }
         
@@ -63,11 +133,13 @@ final class NotificationManager: ObservableObject {
                 
                 guard let documents = snapshot?.documents else { return }
                 
-                self.pendingInvitations = documents.compactMap { doc -> ProjectInvitation? in
-                    try? doc.data(as: ProjectInvitation.self)
+                Task { @MainActor in
+                    self.pendingInvitations = documents.compactMap { doc -> ProjectInvitation? in
+                        try? doc.data(as: ProjectInvitation.self)
+                    }
+                    
+                    print("📨 \(self.pendingInvitations.count) bekleyen davet")
                 }
-                
-                print("📨 \(self.pendingInvitations.count) bekleyen davet")
             }
     }
     
@@ -163,6 +235,10 @@ final class NotificationManager: ObservableObject {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Kullanıcı oturum açmamış"])
         }
         
+        guard invitation.receiverId == currentUser.uid else {
+            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu daveti yanıtlama yetkiniz yok"])
+        }
+        
         isLoading = true
         errorMessage = nil
         
@@ -179,29 +255,46 @@ final class NotificationManager: ObservableObject {
                 // Add user to project team
                 let projectRef = db.collection("projects").document(invitation.projectId)
                 
+                // Önce projeyi al
+                let projectDoc = try await projectRef.getDocument()
+                guard projectDoc.exists else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Proje bulunamadı"])
+                }
+                
+                // teamMemberIds'e ekle
                 try await projectRef.updateData([
                     "teamMemberIds": FieldValue.arrayUnion([currentUser.uid])
                 ])
                 
-                // Add user object to teamMembers
+                // Kullanıcı bilgilerini al ve teamMembers array'ine ekle
                 let userDoc = try await db.collection("users").document(currentUser.uid).getDocument()
-                if let userData = userDoc.data() {
-                    let userToAdd: [String: Any] = [
-                        "uid": currentUser.uid,
-                        "displayName": userData["displayName"] as? String ?? currentUser.displayName ?? "Kullanıcı",
-                        "email": currentUser.email ?? "",
-                        "photoUrl": userData["photoUrl"] as? String ?? "",
-                        "createdAt": Timestamp(date: Date())
-                    ]
-                    
+                
+                let displayName = userDoc.data()?["displayName"] as? String ?? currentUser.displayName ?? "Kullanıcı"
+                let photoUrl = userDoc.data()?["photoUrl"] as? String ?? ""
+                
+                let teamMember: [String: Any] = [
+                    "uid": currentUser.uid,
+                    "displayName": displayName,
+                    "email": currentUser.email ?? "",
+                    "photoUrl": photoUrl,
+                    "joinedAt": Timestamp(date: Date())
+                ]
+                
+                // teamMembers array'ini güncelle veya oluştur
+                let currentData = projectDoc.data()
+                var teamMembers = currentData?["teamMembers"] as? [[String: Any]] ?? []
+                
+                // Kullanıcı zaten teamMembers'da var mı kontrol et
+                if !teamMembers.contains(where: { ($0["uid"] as? String) == currentUser.uid }) {
+                    teamMembers.append(teamMember)
                     try await projectRef.updateData([
-                        "teamMembers": FieldValue.arrayUnion([userToAdd])
+                        "teamMembers": teamMembers
                     ])
                 }
                 
-                print("✅ Davet kabul edildi, projeye eklendi")
+                print("✅ Davet kabul edildi, projeye eklendi: \(invitation.projectTitle)")
             } else {
-                print("✅ Davet reddedildi")
+                print("✅ Davet reddedildi: \(invitation.projectTitle)")
             }
             
             // Notify sender
@@ -219,16 +312,21 @@ final class NotificationManager: ObservableObject {
             )
             
             try db.collection("notifications").document(notification.id).setData(from: notification)
+            print("✅ Gönderene bildirim gönderildi")
             
-            // Kabul edildiyse daveti sil
-            if accept {
-                try await db.collection("invitations").document(invitation.id).delete()
-                print("🗑️ Kabul edilen davet silindi")
+            // Daveti pending listesinden kaldırmak için siliyoruz
+            try await db.collection("invitations").document(invitation.id).delete()
+            print("🗑️ Davet silindi (pending listesinden kaldırıldı)")
+            
+            // UI'dan hemen kaldır (listener'ın güncellenmesini beklemeden)
+            await MainActor.run {
+                self.pendingInvitations.removeAll { $0.id == invitation.id }
+                print("✅ Davet UI'dan kaldırıldı, kalan: \(self.pendingInvitations.count)")
             }
             
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ Davet yanıtlama hatası: \(error)")
+            print("❌ Davet yanıtlama hatası: \(error.localizedDescription)")
             throw error
         }
         
@@ -296,6 +394,196 @@ final class NotificationManager: ObservableObject {
         } catch {
             print("❌ Proje davetleri yükleme hatası: \(error)")
             return []
+        }
+    }
+    
+    // MARK: - Notification Settings
+    
+    func saveNotificationSettings(_ settings: [String: Any]) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        do {
+            try await db.collection("users").document(userId).updateData([
+                "notificationSettings": settings
+            ])
+            print("✅ Bildirim ayarları kaydedildi")
+        } catch {
+            print("❌ Bildirim ayarları kaydetme hatası: \(error)")
+        }
+    }
+    
+    func loadNotificationSettings(completion: @escaping ([String: Any]?) -> Void) async {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(nil)
+            return
+        }
+        
+        do {
+            let doc = try await db.collection("users").document(userId).getDocument()
+            let settings = doc.data()?["notificationSettings"] as? [String: Any]
+            await MainActor.run {
+                completion(settings)
+            }
+        } catch {
+            print("❌ Bildirim ayarları yükleme hatası: \(error)")
+            await MainActor.run {
+                completion(nil)
+            }
+        }
+    }
+    
+    func requestEmailNotificationPermission() async {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let userEmail = Auth.auth().currentUser?.email else { return }
+        
+        // E-posta bildirim tercihini Firebase'e kaydet
+        do {
+            try await db.collection("emailNotificationQueue").addDocument(data: [
+                "userId": userId,
+                "email": userEmail,
+                "type": "preference_update",
+                "enabled": true,
+                "createdAt": Timestamp(date: Date())
+            ])
+            print("✅ E-posta bildirim tercihi kaydedildi")
+        } catch {
+            print("❌ E-posta bildirim tercihi kaydetme hatası: \(error)")
+        }
+    }
+    
+    // Check notification settings before sending
+    func shouldSendNotification(type: String, userId: String) async -> Bool {
+        do {
+            let doc = try await db.collection("users").document(userId).getDocument()
+            guard let settings = doc.data()?["notificationSettings"] as? [String: Any] else {
+                return true // Varsayılan olarak gönder
+            }
+            
+            switch type {
+            case "taskReminder":
+                return settings["taskReminders"] as? Bool ?? true
+            case "projectUpdate":
+                return settings["projectUpdates"] as? Bool ?? true
+            case "teamActivity":
+                return settings["teamActivity"] as? Bool ?? false
+            default:
+                return settings["pushNotifications"] as? Bool ?? true
+            }
+        } catch {
+            return true // Hata durumunda gönder
+        }
+    }
+    
+    // MARK: - Notification Triggers
+    
+    // Görev hatırlatıcısı gönder
+    func sendTaskReminder(taskTitle: String, dueDate: Date, projectTitle: String, assignedUserId: String) async {
+        guard await shouldSendNotification(type: "taskReminder", userId: assignedUserId) else { return }
+        
+        let notification = AppNotification(
+            userId: assignedUserId,
+            type: .taskDeadline,
+            title: "Görev Hatırlatıcısı",
+            message: "'\(taskTitle)' görevi yaklaşıyor. Proje: \(projectTitle)",
+            relatedId: assignedUserId
+        )
+        
+        do {
+            try db.collection("notifications").document(notification.id).setData(from: notification)
+            
+            // Local notification
+            sendLocalNotification(
+                title: "Görev Hatırlatıcısı",
+                body: notification.message,
+                identifier: notification.id,
+                category: "TASK_REMINDER"
+            )
+            
+            print("✅ Görev hatırlatıcısı gönderildi")
+        } catch {
+            print("❌ Görev hatırlatıcısı hatası: \(error)")
+        }
+    }
+    
+    // Proje güncellemesi bildir
+    func sendProjectUpdate(projectId: String, projectTitle: String, updateMessage: String, teamMemberIds: [String]) async {
+        for userId in teamMemberIds {
+            guard await shouldSendNotification(type: "projectUpdate", userId: userId) else { continue }
+            
+            let notification = AppNotification(
+                userId: userId,
+                type: .projectInvitation,
+                title: "Proje Güncellendi",
+                message: "'\(projectTitle)': \(updateMessage)",
+                relatedId: projectId
+            )
+            
+            do {
+                try db.collection("notifications").document(notification.id).setData(from: notification)
+                
+                sendLocalNotification(
+                    title: "Proje Güncellendi",
+                    body: notification.message,
+                    identifier: notification.id,
+                    category: "PROJECT_UPDATE"
+                )
+            } catch {
+                print("❌ Proje güncelleme bildirimi hatası: \(error)")
+            }
+        }
+        print("✅ Proje güncelleme bildirimleri gönderildi")
+    }
+    
+    // Ekip aktivitesi bildir
+    func sendTeamActivity(actorName: String, action: String, projectTitle: String, teamMemberIds: [String], actorId: String) async {
+        for userId in teamMemberIds where userId != actorId {
+            guard await shouldSendNotification(type: "teamActivity", userId: userId) else { continue }
+            
+            let notification = AppNotification(
+                userId: userId,
+                type: .teamActivity,
+                title: "Ekip Aktivitesi",
+                message: "\(actorName) \(action) - \(projectTitle)",
+                relatedId: actorId
+            )
+            
+            do {
+                try db.collection("notifications").document(notification.id).setData(from: notification)
+                
+                sendLocalNotification(
+                    title: "Ekip Aktivitesi",
+                    body: notification.message,
+                    identifier: notification.id,
+                    category: "TEAM_ACTIVITY"
+                )
+            } catch {
+                print("❌ Ekip aktivitesi bildirimi hatası: \(error)")
+            }
+        }
+        print("✅ Ekip aktivitesi bildirimleri gönderildi")
+    }
+    
+    // E-posta bildirimi kuyruğa ekle
+    func queueEmailNotification(userId: String, email: String, subject: String, body: String, type: String) async {
+        guard let userDoc = try? await db.collection("users").document(userId).getDocument(),
+              let settings = userDoc.data()?["notificationSettings"] as? [String: Any],
+              settings["emailNotifications"] as? Bool == true else {
+            return
+        }
+        
+        do {
+            try await db.collection("emailNotificationQueue").addDocument(data: [
+                "userId": userId,
+                "email": email,
+                "subject": subject,
+                "body": body,
+                "type": type,
+                "status": "pending",
+                "createdAt": Timestamp(date: Date())
+            ])
+            print("✅ E-posta bildirimi kuyruğa eklendi")
+        } catch {
+            print("❌ E-posta kuyruğa ekleme hatası: \(error)")
         }
     }
 }

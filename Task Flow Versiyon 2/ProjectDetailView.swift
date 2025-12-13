@@ -3,16 +3,17 @@ import SwiftUI
 struct ProjectDetailView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var projectManager: ProjectManager
+    @EnvironmentObject var themeManager: ThemeManager
     @StateObject private var localization = LocalizationManager.shared
     @Binding var project: Project
     @State private var selectedTaskIndex: Int?
-    @State private var showTaskDetail = false
     @State private var showAnalytics = false
     @State private var showAddTask = false
     @State private var showAddTeamMember = false
     @State private var showEditProject = false
     @State private var showDeleteConfirmation = false
     @State private var showActionSheet = false
+    @State private var isLoading = true
     
     var teamMembers: [User] {
         var members: [User] = []
@@ -37,34 +38,14 @@ struct ProjectDetailView: View {
         project.teamLeader ?? project.teamMembers.first
     }
     
-    var priorityColor: Color {
-        guard let index = selectedTaskIndex, index < project.tasks.count else { return .blue }
-        let task = project.tasks[index]
-        switch task.priority {
-        case .high:
-            return .red
-        case .medium:
-            return .orange
-        case .low:
-            return .green
-        }
-    }
-    
-    var body: some View {
-        ZStack {
-            // Background
-            Color(red: 0.11, green: 0.13, blue: 0.16)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header
-                HStack {
+    var headerView: some View {
+        HStack {
                     Button(action: {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "arrow.left")
                             .font(.title3)
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.textColor)
                     }
                     
                     Spacer()
@@ -72,7 +53,7 @@ struct ProjectDetailView: View {
                     Text(localization.localizedString("ProjectDetails"))
                         .font(.title3)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.textColor)
                     
                     Spacer()
                     
@@ -83,7 +64,7 @@ struct ProjectDetailView: View {
                         }) {
                             Image(systemName: "chart.bar.fill")
                                 .font(.title3)
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                         }
                         
                         // More menu button
@@ -92,32 +73,30 @@ struct ProjectDetailView: View {
                         }) {
                             Image(systemName: "ellipsis.circle")
                                 .font(.title3)
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                         }
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 16)
-                
-                // Content
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        // Project Info
-                        VStack(alignment: .leading, spacing: 12) {
+    }
+    
+    var projectInfoView: some View {
+        VStack(alignment: .leading, spacing: 12) {
                             Text(project.title)
                                 .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.textColor)
                             
                             Text(project.description)
                                 .font(.system(size: 15))
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.secondaryTextColor)
                                 .lineSpacing(4)
                             
                             if !project.dueDateString.isEmpty {
                                 Text(project.dueDateString)
                                     .font(.system(size: 14))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(Color(red: 0.40, green: 0.84, blue: 0.55))
                             }
                             
                             // Progress
@@ -130,8 +109,8 @@ struct ProjectDetailView: View {
                                         
                                         Spacer()
                                         
-                                        Text("%\(Int(project.progressPercentage * 100))")
-                                            .font(.system(size: 14, weight: .semibold))
+                                        Text("\(project.tasks.filter { $0.isCompleted }.count)/\(project.tasks.count)")
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white)
                                     }
                                     
@@ -155,9 +134,10 @@ struct ProjectDetailView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
                         )
-                        
-                        // Ekip Section
-                        VStack(alignment: .leading, spacing: 16) {
+    }
+    
+    var teamSectionView: some View {
+        VStack(alignment: .leading, spacing: 16) {
                             HStack {
                                 Text(localization.localizedString("Team"))
                                     .font(.system(size: 20, weight: .bold))
@@ -201,9 +181,10 @@ struct ProjectDetailView: View {
                                 }
                             }
                         }
-                        
-                        // Görevler Section
-                        VStack(alignment: .leading, spacing: 16) {
+    }
+    
+    var tasksSectionView: some View {
+        VStack(alignment: .leading, spacing: 16) {
                             HStack {
                                 Text(localization.localizedString("Tasks"))
                                     .font(.system(size: 20, weight: .bold))
@@ -233,17 +214,34 @@ struct ProjectDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 40)
                             } else {
-                                ForEach(Array(project.tasks.indices), id: \.self) { index in
-                                    TaskRowCard(task: project.tasks[index]) {
-                                        toggleTaskCompletion(project.tasks[index])
+                                ForEach(Array(project.tasks.enumerated()), id: \.element.id) { index, task in
+                                    TaskRowCard(task: task) {
+                                        // Toggle completion
+                                        project.tasks[index].isCompleted.toggle()
                                     }
                                     .onTapGesture {
                                         selectedTaskIndex = index
-                                        showTaskDetail = true
                                     }
                                 }
                             }
                         }
+    }
+    
+    var body: some View {
+        ZStack {
+            // Background
+            Color(red: 0.11, green: 0.13, blue: 0.16)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                headerView
+                
+                // Content
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        projectInfoView
+                        teamSectionView
+                        tasksSectionView
                     }
                     .padding(20)
                     .padding(.bottom, 100)
@@ -251,8 +249,11 @@ struct ProjectDetailView: View {
             }
         }
         .navigationBarHidden(true)
-        .sheet(isPresented: $showTaskDetail) {
-            if let index = selectedTaskIndex, index < project.tasks.count {
+        .sheet(isPresented: Binding(
+            get: { selectedTaskIndex != nil },
+            set: { if !$0 { selectedTaskIndex = nil } }
+        )) {
+            if let index = selectedTaskIndex {
                 TaskDetailView(task: $project.tasks[index])
             }
         }
@@ -289,11 +290,12 @@ struct ProjectDetailView: View {
         } message: {
             Text(localization.localizedString("DeleteProjectConfirmation"))
         }
-    }
-    
-    private func toggleTaskCompletion(_ task: ProjectTask) {
-        if let index = project.tasks.firstIndex(where: { $0.id == task.id }) {
-            project.tasks[index].isCompleted.toggle()
+        .overlay(loadingOverlay)
+        .onAppear {
+            // Simulate data loading
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isLoading = false
+            }
         }
     }
     
@@ -456,6 +458,27 @@ struct TaskRowCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
         )
+    }
+}
+
+extension ProjectDetailView {
+    var loadingOverlay: some View {
+        Group {
+            if isLoading {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(2.5)
+                    .frame(width: 200, height: 200)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                )
+            }
+        }
     }
 }
 

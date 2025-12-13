@@ -27,52 +27,25 @@ struct EnhancedLoginView: View {
     
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 20) {
-                Spacer()
-                
-                // Logo ve Başlık
-                VStack(spacing: 16) {
-                    // Yeşil Raptiye İkonu
-                    ZStack {
-                        Circle()
-                            .fill(greenAccent.opacity(0.2))
-                            .frame(width: 90, height: 90)
-                        
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 45, weight: .semibold))
-                            .foregroundColor(greenAccent)
-                            .rotationEffect(.degrees(45))
-                    }
-                    .scaleEffect(authViewModel.isLoading ? 0.9 : 1.0)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: authViewModel.isLoading)
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header Section
+                    headerSection
+                        .frame(height: geometry.size.height * 0.4)
                     
-                    // App Title
-                    VStack(spacing: 6) {
-                        Text("Raptiye")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Text(localization.localizedString("Welcome"))
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
+                    // Login Form Section
+                    loginFormSection
+                        .padding(.horizontal, 32)
+                        .padding(.top, 40)
+                    
+                    Spacer(minLength: 40)
                 }
-                
-                Spacer()
-                    .frame(height: 20)
-                
-                // Login Form Section
-                loginFormSection
-                    .padding(.horizontal, 28)
-                
-                Spacer()
             }
-            .padding(.bottom, 40)
         }
         .background(
             Color(red: 0.11, green: 0.13, blue: 0.16)
-                .ignoresSafeArea()
         )
+        .ignoresSafeArea()
         .onTapGesture {
             hideKeyboard()
         }
@@ -97,18 +70,58 @@ struct EnhancedLoginView: View {
         } message: {
             Text(authViewModel.errorMessage ?? "")
         }
-        .alert("Başarılı", isPresented: .constant(authViewModel.successMessage != nil)) {
-            Button(localization.localizedString("OK")) {
-                authViewModel.successMessage = nil
+    }
+    
+    // MARK: - Header Section
+    private var headerSection: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            
+            // Yeşil Raptiye İkonu
+            ZStack {
+                Circle()
+                    .fill(greenAccent.opacity(0.2))
+                    .frame(width: 100, height: 100)
+                
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 50, weight: .semibold))
+                    .foregroundColor(greenAccent)
+                    .rotationEffect(.degrees(45))
             }
-        } message: {
-            Text(authViewModel.successMessage ?? "")
+            .scaleEffect(authViewModel.isLoading ? 0.9 : 1.0)
+            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: authViewModel.isLoading)
+            
+            // App Title
+            VStack(spacing: 8) {
+                Text("Raptiye")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                
+                Text(localization.localizedString("Welcome"))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            
+            Spacer()
         }
     }
     
     // MARK: - Login Form Section
     private var loginFormSection: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
+            // Welcome Text
+            VStack(spacing: 8) {
+                Text(localization.localizedString("Welcome"))
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text(localization.localizedString("SignIn"))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .padding(.bottom, 20)
+            
             // Email Field
             CustomTextField(
                 placeholder: localization.localizedString("Email"),
@@ -216,12 +229,16 @@ struct CustomTextField: View {
                 .foregroundColor(.white.opacity(0.7))
                 .frame(width: 24)
             
-            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.gray))
+            TextField(placeholder, text: $text)
                 .font(.system(size: 16))
                 .foregroundColor(.white)
                 .keyboardType(keyboardType)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
+                .placeholder(when: text.isEmpty) {
+                    Text(placeholder)
+                        .foregroundColor(.white.opacity(0.5))
+                }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)

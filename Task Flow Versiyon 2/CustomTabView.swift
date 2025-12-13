@@ -4,7 +4,6 @@ struct CustomTabView: View {
     @State private var selectedTab = 0
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var localization = LocalizationManager.shared
-    @StateObject private var notificationManager = NotificationManager.shared
     
     var body: some View {
         ZStack {
@@ -44,11 +43,10 @@ struct CustomTabView: View {
                     Spacer()
                     
                     // Bildirimler tab
-                    TabBarItemWithBadge(
+                    TabBarItem(
                         icon: "bell",
                         title: localization.localizedString("Notifications"),
-                        isSelected: selectedTab == 1,
-                        badgeCount: notificationManager.unreadCount + notificationManager.pendingInvitations.count
+                        isSelected: selectedTab == 1
                     ) {
                         selectedTab = 1
                     }
@@ -92,57 +90,18 @@ struct TabBarItem: View {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
+                    .foregroundColor(isSelected ? Color(red: 0.40, green: 0.84, blue: 0.55) : themeManager.secondaryTextColor)
                 
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
+                    .foregroundColor(isSelected ? Color(red: 0.40, green: 0.84, blue: 0.55) : themeManager.secondaryTextColor)
             }
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
-// MARK: - Tab Bar Item with Badge
-struct TabBarItemWithBadge: View {
-    @EnvironmentObject var themeManager: ThemeManager
-    let icon: String
-    let title: String
-    let isSelected: Bool
-    let badgeCount: Int
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: icon)
-                        .font(.title3)
-                        .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
-                    
-                    if badgeCount > 0 {
-                        Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(Color.red)
-                            )
-                            .offset(x: 12, y: -8)
-                    }
-                }
-                
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
+// MARK: - Temporary Views
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var themeManager = ThemeManager.shared

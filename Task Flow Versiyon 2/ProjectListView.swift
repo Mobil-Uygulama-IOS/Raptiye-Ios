@@ -11,10 +11,7 @@ struct ProjectListView: View {
     @State private var showProjectBoard = false
     @State private var selectedProject: Project?
     @State private var showCreateProject = false
-    
-    init() {
-        print("📋 ProjectListView initialized")
-    }
+    @State private var hasAppeared = false
     
     var sortOptions: [String] {
         [localization.localizedString("SortOptionDate"), localization.localizedString("SortOptionName"), localization.localizedString("SortOptionProgress")]
@@ -63,10 +60,7 @@ struct ProjectListView: View {
     }
     
     var body: some View {
-        let _ = print("📋 ProjectListView render")
-        
-        // NavigationView YOK (Doğru), ama modifierlar ZStack'e eklenecek.
-        return ZStack {
+        ZStack {
             themeManager.backgroundColor.ignoresSafeArea()
             
             VStack(spacing: 0) {
@@ -80,9 +74,10 @@ struct ProjectListView: View {
                     Spacer()
                     
                     HStack(spacing: 12) {
-                        // Analytics button - Tüm projelerin analizi
+                        // Analytics button
                         Button(action: {
                             if !projectManager.projects.isEmpty {
+                                selectedProject = projectManager.projects.first
                                 showAnalytics = true
                             }
                         }) {
@@ -97,8 +92,12 @@ struct ProjectListView: View {
                         
                         // Kanban Board button
                         Button(action: {
+                            print("🟢 ProjectBoard butonu tıklandı")
                             if !projectManager.projects.isEmpty {
+                                print("🟢 Projeler var, showProjectBoard = true")
                                 showProjectBoard = true
+                            } else {
+                                print("⚠️ Proje yok, açılmıyor")
                             }
                         }) {
                             Image(systemName: "square.grid.2x2.fill")
@@ -246,6 +245,22 @@ struct ProjectListView: View {
                     }
                 } // ScrollView sonu
             }
+            
+            // Loading overlay
+            if projectManager.isLoading {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(2.5)
+                    .frame(width: 200, height: 200)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                )
+            }
         }
         // DÜZELTME BURADA:
         // NavigationView sargısı YOK, ama Parent View'dan (MainApp/CustomTabView) gelen barı gizlemek zorundayız.
@@ -269,9 +284,10 @@ struct ProjectListView: View {
             .environmentObject(projectManager)
         }
         .sheet(isPresented: $showAnalytics) {
-            AllProjectsAnalyticsView()
-                .environmentObject(themeManager)
-                .environmentObject(projectManager)
+            if let project = selectedProject {
+                ProjectAnalyticsView(project: project)
+                    .environmentObject(themeManager)
+            }
         }
         .sheet(isPresented: $showProjectBoard) {
             ProjectBoardView()
@@ -288,6 +304,19 @@ struct ProjectListView: View {
             }
             .environmentObject(projectManager)
             .environmentObject(themeManager)
+        }
+        .onAppear {
+            if !hasAppeared {
+                hasAppeared = true
+                // Listener zaten çalışıyor, sadece ilk loading durumunu göster
+                if projectManager.projects.isEmpty && !projectManager.isLoading {
+                    projectManager.isLoading = true
+                    // Kısa bir süre sonra listener'dan veri gelecek
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        projectManager.isLoading = false
+                    }
+                }
+            }
         }
     }
     
@@ -378,13 +407,13 @@ struct ProjectCardView: View {
                                     .frame(height: 4)
                                 
                                 RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.blue)
+                                    .fill(Color(red: 0.40, green: 0.84, blue: 0.55))
                                     .frame(width: geometry.size.width * project.progressPercentage, height: 4)
                             }
                         }
                         .frame(height: 4)
                         
-                        Text("%\(Int(project.progressPercentage * 100))")
+                        Text("\(project.completedTasksCount)/\(project.tasksCount)")
                             .font(.caption)
                             .foregroundColor(themeManager.secondaryTextColor)
                             .frame(minWidth: 30)

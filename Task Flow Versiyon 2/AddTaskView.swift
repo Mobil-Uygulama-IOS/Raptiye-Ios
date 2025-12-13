@@ -24,21 +24,20 @@ struct AddTaskView: View {
             // Dark background
             Color(red: 0.11, green: 0.13, blue: 0.16)
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    
                     Button(action: {
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Image(systemName: "xmark")
                             .font(.title3)
                             .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                     
                     Spacer()
                     
@@ -229,7 +228,6 @@ struct AddTaskView: View {
                             DatePicker(
                                 "",
                                 selection: $dueDate,
-                                in: Date()...,
                                 displayedComponents: [.date]
                             )
                             .datePickerStyle(.graphical)
@@ -244,7 +242,6 @@ struct AddTaskView: View {
                     .padding(20)
                     .padding(.bottom, 100)
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
         }
         .alert(isPresented: $showAlert) {

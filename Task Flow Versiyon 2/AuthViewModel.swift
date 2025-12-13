@@ -15,7 +15,6 @@ import FirebaseFirestore
 final class AuthViewModel: ObservableObject {
     @Published var userSession: MockUser?
     @Published var errorMessage: String?
-    @Published var successMessage: String?
     @Published var isLoading = false
     
     private let db = Firestore.firestore()
@@ -158,17 +157,9 @@ final class AuthViewModel: ObservableObject {
     func resetPassword(email: String) async {
         isLoading = true
         errorMessage = nil
-        successMessage = nil
-        
-        guard !email.trimmingCharacters(in: .whitespaces).isEmpty else {
-            errorMessage = "Lütfen e-posta adresinizi girin."
-            isLoading = false
-            return
-        }
         
         do {
-            try await Auth.auth().sendPasswordReset(withEmail: email.trimmingCharacters(in: .whitespaces).lowercased())
-            successMessage = "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."
+            try await Auth.auth().sendPasswordReset(withEmail: email)
             print("✅ Şifre sıfırlama e-postası gönderildi: \(email)")
         } catch {
             errorMessage = error.localizedDescription
@@ -236,52 +227,6 @@ final class AuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             print("❌ Display Name güncelleme hatası: \(error)")
         }
-    }
-    
-    // MARK: - Update Profile with Bio (Firebase + Firestore)
-    @MainActor
-    func updateProfile(displayName: String, bio: String) async {
-        guard let currentUser = Auth.auth().currentUser else { return }
-        
-        do {
-            // Update display name in Firebase Auth
-            let changeRequest = currentUser.createProfileChangeRequest()
-            changeRequest.displayName = displayName
-            try await changeRequest.commitChanges()
-            
-            // Update bio in Firestore
-            try await db.collection("users").document(currentUser.uid).setData([
-                "displayName": displayName,
-                "bio": bio,
-                "updatedAt": Timestamp(date: Date())
-            ], merge: true)
-            
-            if var user = userSession {
-                user.displayName = displayName
-                userSession = user
-            }
-            
-            print("✅ Profil güncellendi: \(displayName), bio: \(bio)")
-        } catch {
-            errorMessage = error.localizedDescription
-            print("❌ Profil güncelleme hatası: \(error)")
-        }
-    }
-    
-    // MARK: - Load User Bio from Firestore
-    @MainActor
-    func loadUserBio() async -> String {
-        guard let currentUser = Auth.auth().currentUser else { return "" }
-        
-        do {
-            let document = try await db.collection("users").document(currentUser.uid).getDocument()
-            if let data = document.data(), let bio = data["bio"] as? String {
-                return bio
-            }
-        } catch {
-            print("❌ Bio yükleme hatası: \(error)")
-        }
-        return ""
     }
     
     // MARK: - Send Password Reset (with callback) - Firebase

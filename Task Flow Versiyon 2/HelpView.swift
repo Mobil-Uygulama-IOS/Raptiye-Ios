@@ -25,7 +25,6 @@ struct HelpView: View {
                                 .background(themeManager.cardBackground)
                                 .clipShape(Circle())
                         }
-                        .buttonStyle(.plain)
                         
                         Spacer()
                         

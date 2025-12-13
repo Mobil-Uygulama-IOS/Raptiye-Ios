@@ -13,7 +13,6 @@ struct ProfileEditView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var showDeleteConfirmation = false
-    @State private var showChangePassword = false
     @State private var showPrivacyPolicy = false
     @State private var showTermsOfService = false
     @FocusState private var focusedField: Field?
@@ -27,6 +26,9 @@ struct ProfileEditView: View {
             // Background with theme
             themeManager.backgroundColor
                 .ignoresSafeArea()
+                .onTapGesture {
+                    hideKeyboard()
+                }
             
             VStack(spacing: 0) {
                 // Header
@@ -37,10 +39,7 @@ struct ProfileEditView: View {
                         Image(systemName: "xmark")
                             .font(.title3)
                             .foregroundColor(themeManager.textColor)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                     
                     Spacer()
                     
@@ -53,7 +52,7 @@ struct ProfileEditView: View {
                     Button(action: {
                         saveProfile()
                     }) {
-                        Text("Kaydet")
+                        Text("Düzenle")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(isLoading ? themeManager.secondaryTextColor : .blue)
                     }
@@ -201,7 +200,7 @@ struct ProfileEditView: View {
                         VStack(spacing: 16) {
                             // Şifre Değiştir
                             Button(action: {
-                                showChangePassword = true
+                                changePassword()
                             }) {
                                 HStack {
                                     Image(systemName: "lock.rotation")
@@ -252,9 +251,6 @@ struct ProfileEditView: View {
                     }
                     .padding(.bottom, 40)
                 }
-                .onTapGesture {
-                    hideKeyboard()
-                }
             }
             
             // Loading overlay
@@ -292,10 +288,6 @@ struct ProfileEditView: View {
         .sheet(isPresented: $showTermsOfService) {
             SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/terms-of-service.html")!)
         }
-        .sheet(isPresented: $showChangePassword) {
-            ChangePasswordView()
-                .environmentObject(themeManager)
-        }
     }
     
     // MARK: - Functions
@@ -304,14 +296,7 @@ struct ProfileEditView: View {
         if let user = authViewModel.userSession {
             displayName = user.displayName ?? ""
             email = user.email ?? ""
-        }
-        
-        // Load bio from Firestore
-        Task {
-            let loadedBio = await authViewModel.loadUserBio()
-            await MainActor.run {
-                bio = loadedBio
-            }
+            // bio can be loaded from a custom user profile if implemented
         }
     }
     
@@ -326,14 +311,31 @@ struct ProfileEditView: View {
         
         isLoading = true
         
-        // Update display name and bio in Firebase
+        // Update display name in Firebase Auth
         Task {
-            await authViewModel.updateProfile(displayName: displayName, bio: bio)
+            await authViewModel.updateDisplayName(displayName)
             
             await MainActor.run {
                 isLoading = false
-                presentationMode.wrappedValue.dismiss()
+                alertMessage = "Profil bilgileriniz başarıyla güncellendi."
+                showAlert = true
             }
+        }
+    }
+    
+    private func changePassword() {
+        // Send password reset email
+        guard let email = authViewModel.userSession?.email else { return }
+        
+        isLoading = true
+        authViewModel.sendPasswordReset(email: email) { success in
+            isLoading = false
+            if success {
+                alertMessage = "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."
+            } else {
+                alertMessage = "Şifre sıfırlama bağlantısı gönderilemedi."
+            }
+            showAlert = true
         }
     }
     

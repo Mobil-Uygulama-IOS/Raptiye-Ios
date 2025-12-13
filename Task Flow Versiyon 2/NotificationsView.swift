@@ -170,7 +170,7 @@ struct TabButton: View {
                 }
                 
                 Rectangle()
-                    .fill(isSelected ? Color.blue : Color.clear)
+                    .fill(isSelected ? Color(red: 0.40, green: 0.84, blue: 0.55) : Color.clear)
                     .frame(height: 3)
                     .cornerRadius(1.5)
             }
@@ -193,12 +193,12 @@ struct InvitationCard: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.2))
+                        .fill(Color(red: 0.40, green: 0.84, blue: 0.55).opacity(0.2))
                         .frame(width: 48, height: 48)
                     
                     Image(systemName: "person.badge.plus")
                         .font(.system(size: 20))
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(red: 0.40, green: 0.84, blue: 0.55))
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -251,7 +251,7 @@ struct InvitationCard: View {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.blue)
+                                .fill(Color(red: 0.40, green: 0.84, blue: 0.55))
                         )
                 }
             }
@@ -358,5 +358,5 @@ extension ProjectInvitation {
 
 #Preview {
     NotificationsView()
-        .environmentObject(ThemeManager())
+        .environmentObject(ThemeManager.shared)
 }

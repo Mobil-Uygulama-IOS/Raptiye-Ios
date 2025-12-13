@@ -55,8 +55,7 @@ struct Project: Identifiable, Codable {
     }
     
     var isCompleted: Bool {
-        // Status completed ise veya tüm görevler tamamlandıysa (%100)
-        status == .completed || (tasksCount > 0 && completedTasksCount == tasksCount)
+        status == .completed
     }
     
     var dueDateString: String {

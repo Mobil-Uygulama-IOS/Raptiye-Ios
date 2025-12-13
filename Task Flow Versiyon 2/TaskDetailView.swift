@@ -141,28 +141,28 @@ struct TaskDetailView: View {
                             }
                             
                             // Due Date
-                            if task.dueDate != nil {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Son Teslim Tarihi")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.gray)
-                                    
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "calendar")
-                                            .font(.system(size: 18))
-                                            .foregroundColor(.blue)
-                                        
-                                        Text(task.formattedDueDate)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.white)
-                                        
-                                        Spacer()
-                                    }
-                                }
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Son Teslim Tarihi")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
                                 
-                                Divider()
-                                    .background(Color.gray.opacity(0.3))
+                                DatePicker(
+                                    "",
+                                    selection: Binding(
+                                        get: { task.dueDate ?? Date() },
+                                        set: { task.dueDate = $0 }
+                                    ),
+                                    in: Date()...,
+                                    displayedComponents: [.date]
+                                )
+                                .datePickerStyle(.compact)
+                                .labelsHidden()
+                                .colorScheme(.dark)
+                                .tint(Color(red: 0.40, green: 0.84, blue: 0.55))
                             }
+                            
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
                             
                             // Creation Date
                             HStack(spacing: 12) {

@@ -26,6 +26,25 @@ struct AddTeamMemberView: View {
     
     let greenAccent = Color(red: 0.40, green: 0.84, blue: 0.55)
     
+    // Kullanıcının proje sahibi mi, ekip lideri mi, yoksa sadece üye mi olduğunu kontrol et
+    private var isProjectOwner: Bool {
+        project.ownerId == projectManager.getCurrentUserId()
+    }
+    
+    private var isTeamLeader: Bool {
+        project.teamLeader?.uid == projectManager.getCurrentUserId()
+    }
+    
+    // Proje sahibi ve ekip lideri tüm işlemleri yapabilir
+    private var canAddMembers: Bool {
+        isProjectOwner || isTeamLeader
+    }
+    
+    // Proje sahibi ve ekip lideri üye çıkarabilir
+    private var canRemoveMembers: Bool {
+        isProjectOwner || isTeamLeader
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -40,15 +59,39 @@ struct AddTeamMemberView: View {
                         // Header
                         headerSection
                         
-                        // Search Section
-                        searchSection
-                        
-                        // Search Result
-                        if let user = searchResult {
-                            userResultCard(user)
+                        // Yetki kontrol mesajı (sadece normal üyeler için)
+                        if !canAddMembers {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.orange)
+                                
+                                Text("Yönetim yetkiniz yok")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                Text("Sadece proje sahibi ve ekip lideri ekip yönetimi yapabilir")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.orange.opacity(0.1))
+                            )
+                        } else {
+                            // Search Section (proje sahibi ve ekip lideri görebilir)
+                            searchSection
+                            
+                            // Search Result
+                            if let user = searchResult {
+                                userResultCard(user)
+                            }
                         }
                         
-                        // Current Team Members
+                        // Current Team Members (herkes görebilir)
                         currentTeamSection
                         
                         Spacer(minLength: 40)
@@ -381,6 +424,22 @@ struct AddTeamMemberView: View {
                     .background(greenAccent.opacity(0.2))
                     .foregroundColor(greenAccent)
                     .cornerRadius(8)
+            } else {
+                // Üye çıkarma butonu (sadece proje sahibi çıkarabilir, ekip lideri çıkaramaz)
+                if canRemoveMembers {
+                    Button(action: {
+                        Task {
+                            await removeTeamMember(user)
+                        }
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                            .frame(width: 32, height: 32)
+                            .background(Color.red.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+                }
             }
         }
         .padding()
@@ -433,6 +492,22 @@ struct AddTeamMemberView: View {
                     errorMessage = "\(localization.localizedString("SearchError")): \(error.localizedDescription)"
                     isSearching = false
                 }
+            }
+        }
+    }
+    
+    // MARK: - Remove Team Member
+    private func removeTeamMember(_ user: User) async {
+        do {
+            try await projectManager.removeTeamMember(userId: user.uid, from: project.id)
+            await MainActor.run {
+                successMessage = "\(user.displayName ?? "Kullanıcı") projeden çıkarıldı."
+                showSuccess = true
+            }
+        } catch {
+            print("❌ Üye çıkarma hatası: \(error.localizedDescription)")
+            await MainActor.run {
+                errorMessage = "Üye çıkarılamadı: \(error.localizedDescription)"
             }
         }
     }

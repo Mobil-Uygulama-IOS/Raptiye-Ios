@@ -4,6 +4,7 @@ import Charts
 struct ProjectAnalyticsView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var selectedTab: AnalyticsTab = .overview
+    @State private var isLoading = true
     let project: Project
     
     var body: some View {
@@ -79,8 +80,30 @@ struct ProjectAnalyticsView: View {
                     .padding(.bottom, 100)
                 }
             }
+            
+            // Loading overlay
+            if isLoading {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(2.5)
+                    .frame(width: 200, height: 200)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                )
+            }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            // Simulate analytics data loading
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                isLoading = false
+            }
+        }
     }
 }
 

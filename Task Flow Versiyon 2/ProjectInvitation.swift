@@ -85,6 +85,8 @@ enum NotificationType: String, Codable {
     case invitationRejected = "invitation_rejected"
     case taskAssigned = "task_assigned"
     case taskCompleted = "task_completed"
+    case taskDeadline = "task_deadline"
+    case teamActivity = "team_activity"
 }
 
 // MARK: - App Notification Model
@@ -157,6 +159,10 @@ struct AppNotification: Identifiable, Codable {
             return "doc.badge.plus"
         case .taskCompleted:
             return "checkmark.seal.fill"
+        case .taskDeadline:
+            return "clock.badge.exclamationmark"
+        case .teamActivity:
+            return "person.2.fill"
         }
     }
     
@@ -172,6 +178,10 @@ struct AppNotification: Identifiable, Codable {
             return "orange"
         case .taskCompleted:
             return "green"
+        case .taskDeadline:
+            return "red"
+        case .teamActivity:
+            return "purple"
         }
     }
 }

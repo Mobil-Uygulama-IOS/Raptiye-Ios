@@ -20,27 +20,23 @@ class ProjectManager: ObservableObject {
     private var listener: ListenerRegistration?
     
     init() {
-        print("📦 ProjectManager initialized")
         // Listener'ı init'te başlatma - kullanıcı giriş yaptıktan sonra başlatılacak
     }
     
     // MARK: - Real-time Listener
     
     func setupListener() {
-        print("🔄 setupListener called")
-        
         guard let userId = Auth.auth().currentUser?.uid else {
-            print("⚠️ setupListener: No user logged in, skipping listener setup")
             return
         }
-        
-        print("👤 setupListener: User ID = \(userId)")
         
         // Eski listener varsa kaldır
         listener?.remove()
         
+        // Loading başlat
+        isLoading = true
+        
         // Root seviyedeki projects koleksiyonunu dinle
-        // Kullanıcının kendi projeleri (ownerId) veya ekip üyesi olduğu projeler (teamMemberIds)
         listener = db.collection("projects")
             .whereFilter(Filter.orFilter([
                 Filter.whereField("ownerId", isEqualTo: userId),
@@ -49,26 +45,30 @@ class ProjectManager: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
-                Task { @MainActor in
-                    if let error = error {
+                if let error = error {
+                    DispatchQueue.main.async {
                         self.errorMessage = error.localizedDescription
-                        print("❌ Firestore listener hatası: \(error)")
-                        return
+                        self.isLoading = false
                     }
-                    
-                    guard let documents = snapshot?.documents else {
-                        print("⚠️ No documents in snapshot")
-                        return
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else {
+                    DispatchQueue.main.async {
+                        self.isLoading = false
                     }
-                    
-                    self.projects = documents.compactMap { doc -> Project? in
-                        try? doc.data(as: Project.self)
-                    }
-                    
-                    print("✅ \(self.projects.count) proje yüklendi")
-                    for project in self.projects {
-                        print("   📁 \(project.title) - \(project.tasks.count) görev")
-                    }
+                    return
+                }
+                
+                // Parse işlemini arka planda yap
+                let parsedProjects = documents.compactMap { doc -> Project? in
+                    try? doc.data(as: Project.self)
+                }
+                
+                // UI güncellemesini main thread'de yap
+                DispatchQueue.main.async {
+                    self.projects = parsedProjects
+                    self.isLoading = false
                 }
             }
     }
@@ -149,10 +149,6 @@ class ProjectManager: ObservableObject {
             try projectRef.setData(from: projectToSave)
             
             print("✅ Proje oluşturuldu: \(project.title)")
-            print("📋 Görev sayısı: \(projectToSave.tasks.count)")
-            for task in projectToSave.tasks {
-                print("   - \(task.title) (Öncelik: \(task.priority.rawValue), Tarih: \(task.dueDate?.description ?? "Yok"))")
-            }
         } catch {
             errorMessage = error.localizedDescription
             print("❌ Proje oluşturma hatası: \(error)")
@@ -178,6 +174,14 @@ class ProjectManager: ObservableObject {
                 .document(project.id.uuidString)
             
             try projectRef.setData(from: project, merge: true)
+            
+            // Proje güncelleme bildirimi gönder
+            await NotificationManager.shared.sendProjectUpdate(
+                projectId: project.id.uuidString,
+                projectTitle: project.title,
+                updateMessage: "Proje bilgileri güncellendi",
+                teamMemberIds: project.teamMemberIds
+            )
             
             print("✅ Proje güncellendi: \(project.title)")
         } catch {
@@ -407,6 +411,12 @@ class ProjectManager: ObservableObject {
             ])
         
         print("✅ Ekip üyesi çıkarıldı")
+    }
+    
+    // MARK: - Get Current User ID
+    
+    func getCurrentUserId() -> String? {
+        return Auth.auth().currentUser?.uid
     }
     
     // MARK: - Cleanup

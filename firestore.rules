@@ -2,41 +2,126 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Users koleksiyonu
-    match /users/{userId} {
-      // Herkes kendi profilini okuyup yazabilir
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Email ile arama için - tüm giriş yapmış kullanıcılar okuyabilir
-      allow read: if request.auth != null;
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // Projects koleksiyonu (root seviyede)
+    function getUserId() {
+      return request.auth.uid;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && getUserId() == userId;
+    }
+    
+    function isProjectMember(projectData) {
+      return isSignedIn() && (
+        projectData.ownerId == getUserId() ||
+        getUserId() in projectData.teamMemberIds
+      );
+    }
+    
+    // Users Collection
+    match /users/{userId} {
+      // Herkes kendi kullanıcı bilgilerini okuyabilir ve güncelleyebilir
+      allow read, write: if isOwner(userId);
+      
+      // Diğer kullanıcıların e-posta ile aranabilmesi için
+      allow get: if isSignedIn();
+    }
+    
+    // Projects Collection (Root Level)
     match /projects/{projectId} {
-      // Proje oluşturma - giriş yapmış herkes
-      allow create: if request.auth != null;
+      // Okuma: Proje sahibi veya ekip üyesi
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == getUserId() ||
+        getUserId() in resource.data.teamMemberIds
+      );
       
-      // Okuma - proje sahibi veya ekip üyesi
-      allow read: if request.auth != null && 
-                     (request.auth.uid == resource.data.ownerId ||
-                      request.auth.uid in resource.data.teamMemberIds);
+      // Oluşturma: Giriş yapmış herkes
+      allow create: if isSignedIn() && 
+        request.resource.data.ownerId == getUserId();
       
-      // Güncelleme - proje sahibi veya ekip üyesi
-      allow update: if request.auth != null && 
-                       (request.auth.uid == resource.data.ownerId || 
-                        request.auth.uid in resource.data.teamMemberIds);
+      // Güncelleme: Proje sahibi veya ekip lideri veya ekip üyesi
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == getUserId() ||
+        getUserId() in resource.data.teamMemberIds
+      );
       
-      // Silme - sadece proje sahibi
-      allow delete: if request.auth != null && 
-                       request.auth.uid == resource.data.ownerId;
+      // Silme: Sadece proje sahibi
+      allow delete: if isSignedIn() && 
+        resource.data.ownerId == getUserId();
       
-      // Tasks sub-koleksiyonu
+      // Tasks Sub-collection
       match /tasks/{taskId} {
-        // Proje sahibi ve ekip üyeleri tüm işlemleri yapabilir
-        allow read, write: if request.auth != null && 
-                              (request.auth.uid == get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId || 
-                               request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.teamMemberIds);
+        allow read, write: if isSignedIn() && (
+          get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == getUserId() || 
+          getUserId() in get(/databases/$(database)/documents/projects/$(projectId)).data.teamMemberIds
+        );
       }
+    }
+    
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      // Okuma: Sadece bildirim sahibi
+      allow read: if isSignedIn() && 
+        resource.data.userId == getUserId();
+      
+      // Oluşturma: Giriş yapmış herkes (sistem bildirimleri için)
+      allow create: if isSignedIn();
+      
+      // Güncelleme: Sadece bildirim sahibi (okundu işaretlemek için)
+      allow update: if isSignedIn() && 
+        resource.data.userId == getUserId();
+      
+      // Silme: Sadece bildirim sahibi
+      allow delete: if isSignedIn() && 
+        resource.data.userId == getUserId();
+    }
+    
+    // Invitations Collection
+    match /invitations/{invitationId} {
+      // Okuma: Gönderen veya alıcı
+      allow read: if isSignedIn() && (
+        resource.data.senderId == getUserId() ||
+        resource.data.receiverId == getUserId()
+      );
+      
+      // Oluşturma: Giriş yapmış herkes
+      allow create: if isSignedIn();
+      
+      // Güncelleme: Sadece alıcı (kabul/red için)
+      allow update: if isSignedIn() && 
+        resource.data.receiverId == getUserId();
+      
+      // Silme: Gönderen veya alıcı
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == getUserId() ||
+        resource.data.receiverId == getUserId()
+      );
+    }
+    
+    // Email Notification Queue
+    match /emailNotificationQueue/{queueId} {
+      // Okuma: Sadece kendi e-posta bildirimlerini
+      allow read: if isSignedIn() && 
+        resource.data.userId == getUserId();
+      
+      // Oluşturma: Sadece kendi e-posta bildirimi için
+      allow create: if isSignedIn() && 
+        request.resource.data.userId == getUserId();
+      
+      // Güncelleme: Backend (Cloud Functions) için - admin erişimi gerekli
+      allow update: if false;
+      
+      // Silme: Backend tarafından yapılacak
+      allow delete: if false;
+    }
+    
+    // Default: Tüm diğer işlemler reddedilir
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

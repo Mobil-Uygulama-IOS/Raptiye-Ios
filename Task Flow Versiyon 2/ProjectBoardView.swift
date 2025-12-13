@@ -16,9 +16,10 @@ struct ProjectBoardView: View {
     @State private var selectedProjectIndex: Int?
     @State private var selectedTaskIndex: Int?
     @State private var showTaskDetail = false
+    @State private var isLoading = true
     
     let tabs = ["Yapılacaklar", "Devam Ediyor", "Tamamlandı"]
-    let selectedTabColor = Color.blue
+    let selectedTabColor = Color(red: 0.40, green: 0.84, blue: 0.55)
     
     // Tüm projelerden görevleri topla
     var allTasks: [ProjectTask] {
@@ -36,6 +37,16 @@ struct ProjectBoardView: View {
         default:
             return allTasks
         }
+    }
+    
+    // Helper: Task'ın hangi projede olduğunu bul
+    private func findTaskLocation(taskId: UUID) -> (Int, Int)? {
+        for (pIndex, project) in projectManager.projects.enumerated() {
+            if let tIndex = project.tasks.firstIndex(where: { $0.id == taskId }) {
+                return (pIndex, tIndex)
+            }
+        }
+        return nil
     }
     
     var body: some View {
@@ -101,14 +112,11 @@ struct ProjectBoardView: View {
                             TaskBoardCard(task: task)
                                 .environmentObject(themeManager)
                                 .onTapGesture {
-                                    // Hangi projeye ait olduğunu bul
-                                    for (pIndex, project) in projectManager.projects.enumerated() {
-                                        if let tIndex = project.tasks.firstIndex(where: { $0.id == task.id }) {
-                                            selectedProjectIndex = pIndex
-                                            selectedTaskIndex = tIndex
-                                            showTaskDetail = true
-                                            break
-                                        }
+                                    // Hangi projeye ait olduğunu bul (optimized)
+                                    if let (pIndex, tIndex) = findTaskLocation(taskId: task.id) {
+                                        selectedProjectIndex = pIndex
+                                        selectedTaskIndex = tIndex
+                                        showTaskDetail = true
                                     }
                                 }
                         }
@@ -118,8 +126,30 @@ struct ProjectBoardView: View {
                     .padding(.bottom, 100)
                 }
             }
+            
+            // Loading overlay
+            if isLoading {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(2.5)
+                    .frame(width: 200, height: 200)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
+                        .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                )
+            }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            // Simulate data loading
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                isLoading = false
+            }
+        }
         .sheet(isPresented: $showTaskDetail) {
             if let pIndex = selectedProjectIndex,
                let tIndex = selectedTaskIndex,

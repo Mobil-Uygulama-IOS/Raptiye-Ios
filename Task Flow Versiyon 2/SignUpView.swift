@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SafariServices
 
 struct SignUpView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -17,9 +16,6 @@ struct SignUpView: View {
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showPasswordMismatchAlert = false
-    @State private var agreedToTerms = false
-    @State private var showPrivacyPolicy = false
-    @State private var showTermsOfService = false
     @FocusState private var focusedField: Field?
     
     enum Field {
@@ -66,12 +62,6 @@ struct SignUpView: View {
             } message: {
                 Text(authViewModel.errorMessage ?? "")
             }
-            .sheet(isPresented: $showPrivacyPolicy) {
-                SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/privacy-policy.html")!)
-            }
-            .sheet(isPresented: $showTermsOfService) {
-                SafariView(url: URL(string: "https://mobil-uygulama-ios.github.io/Raptiye-Ios/terms-of-service.html")!)
-            }
         }
     }
     
@@ -89,7 +79,6 @@ struct SignUpView: View {
                         .background(Color.white.opacity(0.1))
                         .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
                 .padding(.leading, 20)
                 
                 Spacer()
@@ -157,32 +146,14 @@ struct SignUpView: View {
             .onSubmit { focusedField = .password }
             
             // Password Field
-            VStack(alignment: .leading, spacing: 8) {
-                CustomSecureField(
-                    placeholder: localization.localizedString("Password"),
-                    text: $password,
-                    systemImage: "lock"
-                )
-                .focused($focusedField, equals: .password)
-                .submitLabel(.next)
-                .onSubmit { focusedField = .confirmPassword }
-                
-                // Password strength indicator
-                if !password.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(0..<4) { index in
-                            Rectangle()
-                                .fill(passwordStrengthColor(index: index))
-                                .frame(height: 4)
-                                .cornerRadius(2)
-                        }
-                    }
-                    
-                    Text(passwordStrengthText)
-                        .font(.system(size: 12))
-                        .foregroundColor(passwordStrengthTextColor)
-                }
-            }
+            CustomSecureField(
+                placeholder: localization.localizedString("Password"),
+                text: $password,
+                systemImage: "lock"
+            )
+            .focused($focusedField, equals: .password)
+            .submitLabel(.next)
+            .onSubmit { focusedField = .confirmPassword }
             
             // Confirm Password Field
             CustomSecureField(
@@ -197,52 +168,6 @@ struct SignUpView: View {
                     await signUp()
                 }
             }
-            
-            // Terms and Privacy Agreement
-            HStack(alignment: .top, spacing: 12) {
-                Button(action: {
-                    agreedToTerms.toggle()
-                }) {
-                    Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 22))
-                        .foregroundColor(agreedToTerms ? greenAccent : .white.opacity(0.5))
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text(localization.localizedString("IAgreeToThe"))
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Button(action: {
-                            showPrivacyPolicy = true
-                        }) {
-                            Text(localization.localizedString("PrivacyPolicy"))
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(greenAccent)
-                                .underline()
-                        }
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Text(localization.localizedString("AndThe"))
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Button(action: {
-                            showTermsOfService = true
-                        }) {
-                            Text(localization.localizedString("TermsOfService"))
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(greenAccent)
-                                .underline()
-                        }
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding(.top, 8)
             
             // Sign Up Button - Yeşil
             Button(action: {
@@ -267,8 +192,8 @@ struct SignUpView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: greenAccent.opacity(0.3), radius: 8, x: 0, y: 4)
             }
-            .disabled(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !agreedToTerms)
-            .opacity(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty || !agreedToTerms ? 0.6 : 1.0)
+            .disabled(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty)
+            .opacity(authViewModel.isLoading || name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty ? 0.6 : 1.0)
             .padding(.top, 16)
             
             // Sign In Option
@@ -309,74 +234,6 @@ struct SignUpView: View {
     private func hideKeyboard() {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-    
-    // MARK: - Password Strength
-    
-    private var passwordStrength: Int {
-        var strength = 0
-        
-        // Uzunluk kontrolleri
-        if password.count >= 6 { strength += 1 }
-        if password.count >= 10 { strength += 1 }
-        
-        // Büyük harf
-        if password.range(of: "[A-Z]", options: .regularExpression) != nil { strength += 1 }
-        
-        // Küçük harf
-        if password.range(of: "[a-z]", options: .regularExpression) != nil { strength += 1 }
-        
-        // Rakam
-        if password.range(of: "[0-9]", options: .regularExpression) != nil { strength += 1 }
-        
-        // Özel karakterler
-        if password.range(of: "[!@#$%^&*(),.?\":{}|<>_\\-+=\\[\\]\\\\;'/`~]", options: .regularExpression) != nil { strength += 1 }
-        
-        return min(strength, 4)
-    }
-    
-    private var passwordStrengthText: String {
-        var rawStrength = 0
-        if password.count >= 6 { rawStrength += 1 }
-        if password.count >= 10 { rawStrength += 1 }
-        if password.range(of: "[A-Z]", options: .regularExpression) != nil { rawStrength += 1 }
-        if password.range(of: "[a-z]", options: .regularExpression) != nil { rawStrength += 1 }
-        if password.range(of: "[0-9]", options: .regularExpression) != nil { rawStrength += 1 }
-        if password.range(of: "[!@#$%^&*(),.?\":{}|<>_\\-+=\\[\\]\\\\;'/`~]", options: .regularExpression) != nil { rawStrength += 1 }
-        
-        switch rawStrength {
-        case 0: return "Çok Zayıf"
-        case 1: return "Zayıf"
-        case 2: return "Zayıf"
-        case 3: return "Orta"
-        case 4: return "Güçlü"
-        case 5...6: return "Çok Güçlü"
-        default: return ""
-        }
-    }
-    
-    private var passwordStrengthTextColor: Color {
-        switch passwordStrength {
-        case 0: return .red
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        default: return .gray
-        }
-    }
-    
-    private func passwordStrengthColor(index: Int) -> Color {
-        if index < passwordStrength {
-            switch passwordStrength {
-            case 1: return .red
-            case 2: return .orange
-            case 3: return .yellow
-            case 4: return .green
-            default: return .gray.opacity(0.3)
-            }
-        }
-        return .gray.opacity(0.3)
     }
 }
 
