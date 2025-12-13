@@ -80,13 +80,19 @@ final class NotificationManager: ObservableObject {
     // MARK: - Setup Listeners
     
     func setupListeners() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("⚠️ setupListeners: Kullanıcı oturum açmamış")
+            return
+        }
         
-        // Listen for notifications
+        // Önce mevcut listener'ları kaldır (çift listener önlemek için)
+        removeListeners()
+        
+        print("🔔 Listener'lar başlatılıyor - UserID: \(userId)")
+        
+        // Listen for notifications (index gerektirmeyecek basit sorgu)
         notificationsListener = db.collection("notifications")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
-            .limit(to: 50)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -99,9 +105,12 @@ final class NotificationManager: ObservableObject {
                 
                 Task { @MainActor in
                     let oldCount = self.notifications.count
-                    self.notifications = documents.compactMap { doc -> AppNotification? in
+                    var loadedNotifications = documents.compactMap { doc -> AppNotification? in
                         try? doc.data(as: AppNotification.self)
                     }
+                    // Client-side sıralama
+                    loadedNotifications.sort { $0.createdAt > $1.createdAt }
+                    self.notifications = Array(loadedNotifications.prefix(50))
                     
                     // Yeni bildirim varsa local notification gönder
                     if !self.notifications.isEmpty && self.notifications.count > oldCount {
@@ -114,15 +123,13 @@ final class NotificationManager: ObservableObject {
                     }
                     
                     self.unreadCount = self.notifications.filter { !$0.isRead }.count
+                    print("🔔 \(self.notifications.count) bildirim yüklendi, \(self.unreadCount) okunmamış")
                 }
-                print("🔔 \(self.notifications.count) bildirim yüklendi, \(self.unreadCount) okunmamış")
             }
         
-        // Listen for pending invitations
+        // Listen for pending invitations (index gerektirmeyecek basit sorgu)
         invitationsListener = db.collection("invitations")
             .whereField("receiverId", isEqualTo: userId)
-            .whereField("status", isEqualTo: InvitationStatus.pending.rawValue)
-            .order(by: "createdAt", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 
@@ -134,9 +141,13 @@ final class NotificationManager: ObservableObject {
                 guard let documents = snapshot?.documents else { return }
                 
                 Task { @MainActor in
-                    self.pendingInvitations = documents.compactMap { doc -> ProjectInvitation? in
+                    var loadedInvitations = documents.compactMap { doc -> ProjectInvitation? in
                         try? doc.data(as: ProjectInvitation.self)
                     }
+                    // Client-side filtreleme ve sıralama
+                    loadedInvitations = loadedInvitations.filter { $0.status == .pending }
+                    loadedInvitations.sort { $0.createdAt > $1.createdAt }
+                    self.pendingInvitations = loadedInvitations
                     
                     print("📨 \(self.pendingInvitations.count) bekleyen davet")
                 }
@@ -159,20 +170,27 @@ final class NotificationManager: ObservableObject {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Kullanıcı oturum açmamış"])
         }
         
-        isLoading = true
-        errorMessage = nil
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
         
         do {
             // Find receiver by email
+            print("🔍 Kullanıcı aranıyor: \(receiverEmail.lowercased())")
             let usersSnapshot = try await db.collection("users")
                 .whereField("email", isEqualTo: receiverEmail.lowercased())
                 .getDocuments()
             
+            print("📄 Bulunan döküman sayısı: \(usersSnapshot.documents.count)")
+            
             guard let receiverDoc = usersSnapshot.documents.first else {
+                await MainActor.run { isLoading = false }
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı"])
             }
             
             let receiverId = receiverDoc.documentID
+            print("👤 Alıcı ID: \(receiverId)")
             
             // Check if already invited
             let existingInvitation = try await db.collection("invitations")
@@ -182,6 +200,7 @@ final class NotificationManager: ObservableObject {
                 .getDocuments()
             
             if !existingInvitation.documents.isEmpty {
+                await MainActor.run { isLoading = false }
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcıya zaten davet gönderilmiş"])
             }
             
@@ -190,6 +209,7 @@ final class NotificationManager: ObservableObject {
             if let projectData = projectDoc.data(),
                let teamMemberIds = projectData["teamMemberIds"] as? [String],
                teamMemberIds.contains(receiverId) {
+                await MainActor.run { isLoading = false }
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcı zaten projenin üyesi"])
             }
             
@@ -204,7 +224,9 @@ final class NotificationManager: ObservableObject {
                 receiverEmail: receiverEmail.lowercased()
             )
             
-            try db.collection("invitations").document(invitation.id).setData(from: invitation)
+            print("📨 Davet oluşturuluyor: \(invitation.id)")
+            try await db.collection("invitations").document(invitation.id).setData(from: invitation)
+            print("✅ Davet kaydedildi")
             
             // Create notification for receiver
             let notification = AppNotification(
@@ -215,17 +237,22 @@ final class NotificationManager: ObservableObject {
                 relatedId: invitation.id
             )
             
-            try db.collection("notifications").document(notification.id).setData(from: notification)
+            print("🔔 Bildirim oluşturuluyor: \(notification.id)")
+            try await db.collection("notifications").document(notification.id).setData(from: notification)
+            print("✅ Bildirim kaydedildi")
             
-            print("✅ Davet gönderildi: \(receiverEmail)")
+            print("✅ Davet başarıyla gönderildi: \(receiverEmail)")
+            
+            await MainActor.run { isLoading = false }
             
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isLoading = false
+            }
             print("❌ Davet gönderme hatası: \(error)")
             throw error
         }
-        
-        isLoading = false
     }
     
     // MARK: - Respond to Invitation

@@ -10,6 +10,7 @@ enum InvitationStatus: String, Codable {
 
 // MARK: - Project Invitation Model
 struct ProjectInvitation: Identifiable, Codable {
+    @DocumentID var documentId: String?
     var id: String
     var projectId: String
     var projectTitle: String
@@ -21,6 +22,21 @@ struct ProjectInvitation: Identifiable, Codable {
     var status: InvitationStatus
     var createdAt: Date
     var respondedAt: Date?
+    
+    enum CodingKeys: String, CodingKey {
+        case documentId
+        case id
+        case projectId
+        case projectTitle
+        case senderId
+        case senderName
+        case senderEmail
+        case receiverId
+        case receiverEmail
+        case status
+        case createdAt
+        case respondedAt
+    }
     
     init(
         id: String = UUID().uuidString,

@@ -6,17 +6,15 @@
 //
 
 import SwiftUI
+import Combine
 
 // MARK: - MainAppView
 
 struct MainAppView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var projectManager = ProjectManager()
+    @StateObject private var notificationManager = NotificationManager.shared
     @State private var isInitializing = true
-    
-    private var notificationManager: NotificationManager {
-        NotificationManager.shared
-    }
     
     var body: some View {
         ZStack {
@@ -27,14 +25,6 @@ struct MainAppView: View {
                     .environmentObject(authViewModel)
                     .environmentObject(projectManager)
                     .environmentObject(notificationManager)
-                    .onAppear {
-                        // Kullanıcı giriş yaptı, listener'ı başlat
-                        projectManager.setupListener()
-                        notificationManager.setupListeners()
-                    }
-                    .onDisappear {
-                        notificationManager.removeListeners()
-                    }
             } else {
                 // User is not logged in - show login
                 EnhancedLoginView()
@@ -72,11 +62,37 @@ struct MainAppView: View {
             }
         }
         .onAppear {
-            // Simulate initialization
+            // Simulate initialization ve listener'ları başlat
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 withAnimation(.easeOut(duration: 0.3)) {
                     isInitializing = false
                 }
+                
+                // Uygulama açıldığında kullanıcı zaten giriş yapmışsa listener'ları başlat
+                if authViewModel.userSession != nil {
+                    print("🚀 Uygulama açıldı, kullanıcı giriş yapmış, listener'lar başlatılıyor...")
+                    projectManager.setupListener()
+                    notificationManager.setupListeners()
+                }
+            }
+        }
+        .onChange(of: authViewModel.userSession) { _ in
+            if authViewModel.userSession != nil {
+                // Kullanıcı giriş yaptı - listener'ları başlat
+                print("✅ Kullanıcı giriş yaptı, listener'lar başlatılıyor...")
+                projectManager.setupListener()
+                notificationManager.setupListeners()
+            } else {
+                // Kullanıcı çıkış yaptı - listener'ları kaldır
+                print("👋 Kullanıcı çıkış yaptı, listener'lar kaldırılıyor...")
+                notificationManager.removeListeners()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Uygulama ön plana geldiğinde listener'ları yeniden başlat
+            if authViewModel.userSession != nil {
+                print("📱 Uygulama ön plana geldi, listener'lar yenileniyor...")
+                notificationManager.setupListeners()
             }
         }
     }
