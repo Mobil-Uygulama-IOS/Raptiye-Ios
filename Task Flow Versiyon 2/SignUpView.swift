@@ -157,14 +157,32 @@ struct SignUpView: View {
             .onSubmit { focusedField = .password }
             
             // Password Field
-            CustomSecureField(
-                placeholder: localization.localizedString("Password"),
-                text: $password,
-                systemImage: "lock"
-            )
-            .focused($focusedField, equals: .password)
-            .submitLabel(.next)
-            .onSubmit { focusedField = .confirmPassword }
+            VStack(alignment: .leading, spacing: 8) {
+                CustomSecureField(
+                    placeholder: localization.localizedString("Password"),
+                    text: $password,
+                    systemImage: "lock"
+                )
+                .focused($focusedField, equals: .password)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .confirmPassword }
+                
+                // Password strength indicator
+                if !password.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(0..<4) { index in
+                            Rectangle()
+                                .fill(passwordStrengthColor(index: index))
+                                .frame(height: 4)
+                                .cornerRadius(2)
+                        }
+                    }
+                    
+                    Text(passwordStrengthText)
+                        .font(.system(size: 12))
+                        .foregroundColor(passwordStrengthTextColor)
+                }
+            }
             
             // Confirm Password Field
             CustomSecureField(
@@ -291,6 +309,74 @@ struct SignUpView: View {
     private func hideKeyboard() {
         focusedField = nil
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    // MARK: - Password Strength
+    
+    private var passwordStrength: Int {
+        var strength = 0
+        
+        // Uzunluk kontrolleri
+        if password.count >= 6 { strength += 1 }
+        if password.count >= 10 { strength += 1 }
+        
+        // Büyük harf
+        if password.range(of: "[A-Z]", options: .regularExpression) != nil { strength += 1 }
+        
+        // Küçük harf
+        if password.range(of: "[a-z]", options: .regularExpression) != nil { strength += 1 }
+        
+        // Rakam
+        if password.range(of: "[0-9]", options: .regularExpression) != nil { strength += 1 }
+        
+        // Özel karakterler
+        if password.range(of: "[!@#$%^&*(),.?\":{}|<>_\\-+=\\[\\]\\\\;'/`~]", options: .regularExpression) != nil { strength += 1 }
+        
+        return min(strength, 4)
+    }
+    
+    private var passwordStrengthText: String {
+        var rawStrength = 0
+        if password.count >= 6 { rawStrength += 1 }
+        if password.count >= 10 { rawStrength += 1 }
+        if password.range(of: "[A-Z]", options: .regularExpression) != nil { rawStrength += 1 }
+        if password.range(of: "[a-z]", options: .regularExpression) != nil { rawStrength += 1 }
+        if password.range(of: "[0-9]", options: .regularExpression) != nil { rawStrength += 1 }
+        if password.range(of: "[!@#$%^&*(),.?\":{}|<>_\\-+=\\[\\]\\\\;'/`~]", options: .regularExpression) != nil { rawStrength += 1 }
+        
+        switch rawStrength {
+        case 0: return "Çok Zayıf"
+        case 1: return "Zayıf"
+        case 2: return "Zayıf"
+        case 3: return "Orta"
+        case 4: return "Güçlü"
+        case 5...6: return "Çok Güçlü"
+        default: return ""
+        }
+    }
+    
+    private var passwordStrengthTextColor: Color {
+        switch passwordStrength {
+        case 0: return .red
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .yellow
+        case 4: return .green
+        default: return .gray
+        }
+    }
+    
+    private func passwordStrengthColor(index: Int) -> Color {
+        if index < passwordStrength {
+            switch passwordStrength {
+            case 1: return .red
+            case 2: return .orange
+            case 3: return .yellow
+            case 4: return .green
+            default: return .gray.opacity(0.3)
+            }
+        }
+        return .gray.opacity(0.3)
     }
 }
 

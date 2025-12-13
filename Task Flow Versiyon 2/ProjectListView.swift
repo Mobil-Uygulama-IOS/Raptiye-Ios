@@ -80,10 +80,9 @@ struct ProjectListView: View {
                     Spacer()
                     
                     HStack(spacing: 12) {
-                        // Analytics button
+                        // Analytics button - Tüm projelerin analizi
                         Button(action: {
                             if !projectManager.projects.isEmpty {
-                                selectedProject = projectManager.projects.first
                                 showAnalytics = true
                             }
                         }) {
@@ -270,10 +269,9 @@ struct ProjectListView: View {
             .environmentObject(projectManager)
         }
         .sheet(isPresented: $showAnalytics) {
-            if let project = selectedProject {
-                ProjectAnalyticsView(project: project)
-                    .environmentObject(themeManager)
-            }
+            AllProjectsAnalyticsView()
+                .environmentObject(themeManager)
+                .environmentObject(projectManager)
         }
         .sheet(isPresented: $showProjectBoard) {
             ProjectBoardView()
