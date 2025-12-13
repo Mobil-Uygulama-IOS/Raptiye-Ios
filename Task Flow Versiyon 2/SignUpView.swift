@@ -89,6 +89,7 @@ struct SignUpView: View {
                         .background(Color.white.opacity(0.1))
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
                 .padding(.leading, 20)
                 
                 Spacer()

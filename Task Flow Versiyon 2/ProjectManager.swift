@@ -66,6 +66,9 @@ class ProjectManager: ObservableObject {
                     }
                     
                     print("✅ \(self.projects.count) proje yüklendi")
+                    for project in self.projects {
+                        print("   📁 \(project.title) - \(project.tasks.count) görev")
+                    }
                 }
             }
     }
@@ -146,6 +149,10 @@ class ProjectManager: ObservableObject {
             try projectRef.setData(from: projectToSave)
             
             print("✅ Proje oluşturuldu: \(project.title)")
+            print("📋 Görev sayısı: \(projectToSave.tasks.count)")
+            for task in projectToSave.tasks {
+                print("   - \(task.title) (Öncelik: \(task.priority.rawValue), Tarih: \(task.dueDate?.description ?? "Yok"))")
+            }
         } catch {
             errorMessage = error.localizedDescription
             print("❌ Proje oluşturma hatası: \(error)")

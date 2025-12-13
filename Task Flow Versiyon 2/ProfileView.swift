@@ -38,6 +38,7 @@ struct ProfileView: View {
                                 .background(themeManager.cardBackground)
                                 .clipShape(Circle())
                         }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                         

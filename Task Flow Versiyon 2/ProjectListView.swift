@@ -386,7 +386,7 @@ struct ProjectCardView: View {
                         }
                         .frame(height: 4)
                         
-                        Text("\(project.completedTasksCount)/\(project.tasksCount)")
+                        Text("%\(Int(project.progressPercentage * 100))")
                             .font(.caption)
                             .foregroundColor(themeManager.secondaryTextColor)
                             .frame(minWidth: 30)

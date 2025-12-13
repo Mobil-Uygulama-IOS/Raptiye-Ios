@@ -130,8 +130,8 @@ struct ProjectDetailView: View {
                                         
                                         Spacer()
                                         
-                                        Text("\(project.tasks.filter { $0.isCompleted }.count)/\(project.tasks.count)")
-                                            .font(.system(size: 14))
+                                        Text("%\(Int(project.progressPercentage * 100))")
+                                            .font(.system(size: 14, weight: .semibold))
                                             .foregroundColor(.white)
                                     }
                                     

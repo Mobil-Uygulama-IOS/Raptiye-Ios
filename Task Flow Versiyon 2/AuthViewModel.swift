@@ -238,6 +238,52 @@ final class AuthViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Update Profile with Bio (Firebase + Firestore)
+    @MainActor
+    func updateProfile(displayName: String, bio: String) async {
+        guard let currentUser = Auth.auth().currentUser else { return }
+        
+        do {
+            // Update display name in Firebase Auth
+            let changeRequest = currentUser.createProfileChangeRequest()
+            changeRequest.displayName = displayName
+            try await changeRequest.commitChanges()
+            
+            // Update bio in Firestore
+            try await db.collection("users").document(currentUser.uid).setData([
+                "displayName": displayName,
+                "bio": bio,
+                "updatedAt": Timestamp(date: Date())
+            ], merge: true)
+            
+            if var user = userSession {
+                user.displayName = displayName
+                userSession = user
+            }
+            
+            print("✅ Profil güncellendi: \(displayName), bio: \(bio)")
+        } catch {
+            errorMessage = error.localizedDescription
+            print("❌ Profil güncelleme hatası: \(error)")
+        }
+    }
+    
+    // MARK: - Load User Bio from Firestore
+    @MainActor
+    func loadUserBio() async -> String {
+        guard let currentUser = Auth.auth().currentUser else { return "" }
+        
+        do {
+            let document = try await db.collection("users").document(currentUser.uid).getDocument()
+            if let data = document.data(), let bio = data["bio"] as? String {
+                return bio
+            }
+        } catch {
+            print("❌ Bio yükleme hatası: \(error)")
+        }
+        return ""
+    }
+    
     // MARK: - Send Password Reset (with callback) - Firebase
     func sendPasswordReset(email: String, completion: @escaping (Bool) -> Void) {
         Auth.auth().sendPasswordReset(withEmail: email) { error in
