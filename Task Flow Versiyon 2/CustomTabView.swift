@@ -4,6 +4,7 @@ struct CustomTabView: View {
     @State private var selectedTab = 0
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var localization = LocalizationManager.shared
+    @StateObject private var notificationManager = NotificationManager.shared
     
     var body: some View {
         ZStack {
@@ -43,10 +44,11 @@ struct CustomTabView: View {
                     Spacer()
                     
                     // Bildirimler tab
-                    TabBarItem(
+                    TabBarItemWithBadge(
                         icon: "bell",
                         title: localization.localizedString("Notifications"),
-                        isSelected: selectedTab == 1
+                        isSelected: selectedTab == 1,
+                        badgeCount: notificationManager.unreadCount + notificationManager.pendingInvitations.count
                     ) {
                         selectedTab = 1
                     }
@@ -101,37 +103,43 @@ struct TabBarItem: View {
     }
 }
 
-// MARK: - Temporary Views
-struct NotificationsView: View {
-    @StateObject private var themeManager = ThemeManager.shared
-    @StateObject private var localization = LocalizationManager.shared
+// MARK: - Tab Bar Item with Badge
+struct TabBarItemWithBadge: View {
+    @EnvironmentObject var themeManager: ThemeManager
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let badgeCount: Int
+    let action: () -> Void
     
     var body: some View {
-        NavigationView {
-            VStack {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.gray)
-                    .padding()
+        Button(action: action) {
+            VStack(spacing: 4) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: icon)
+                        .font(.title3)
+                        .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
+                    
+                    if badgeCount > 0 {
+                        Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill(Color.red)
+                            )
+                            .offset(x: 12, y: -8)
+                    }
+                }
                 
-                Text(localization.localizedString("Notifications"))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.textColor)
-                
-                Text(localization.localizedString("NoNotificationsMessage"))
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding()
-                
-                Spacer()
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .blue : themeManager.secondaryTextColor)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(themeManager.backgroundColor)
-            .navigationTitle(localization.localizedString("Notifications"))
-            .navigationBarHidden(true)
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

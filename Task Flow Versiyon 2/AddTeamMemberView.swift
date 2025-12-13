@@ -10,6 +10,7 @@ import SwiftUI
 struct AddTeamMemberView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var projectManager: ProjectManager
+    @StateObject private var notificationManager = NotificationManager.shared
     @StateObject private var localization = LocalizationManager.shared
     
     let project: Project
@@ -19,6 +20,8 @@ struct AddTeamMemberView: View {
     @State private var searchResult: User?
     @State private var errorMessage: String?
     @State private var showSuccess = false
+    @State private var successMessage = ""
+    @State private var pendingInvitations: [ProjectInvitation] = []
     @FocusState private var isSearchFieldFocused: Bool
     
     let greenAccent = Color(red: 0.40, green: 0.84, blue: 0.55)
@@ -76,7 +79,10 @@ struct AddTeamMemberView: View {
                     searchResult = nil
                 }
             } message: {
-                Text(localization.localizedString("TeamMemberAddedSuccess"))
+                Text(successMessage)
+            }
+            .task {
+                await loadPendingInvitations()
             }
         }
     }
@@ -180,21 +186,43 @@ struct AddTeamMemberView: View {
                 Spacer()
             }
             
-            // Add Button
-            Button(action: { 
-                Task {
-                    await addTeamMember(user)
-                }
-            }) {
+            // Check if user already has pending invitation
+            if let invitation = pendingInvitations.first(where: { $0.receiverEmail == user.email?.lowercased() }) {
+                // Show invitation status
                 HStack {
-                    Image(systemName: "person.badge.plus")
-                    Text(localization.localizedString("AddToProject"))
+                    Image(systemName: invitation.status == .pending ? "clock" : invitation.status == .accepted ? "checkmark.circle" : "xmark.circle")
+                    Text(invitation.status == .pending ? "Davet Gönderildi" : invitation.status == .accepted ? "Kabul Edildi" : "Reddedildi")
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(greenAccent)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(invitation.status == .pending ? Color.orange.opacity(0.2) : invitation.status == .accepted ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+                )
+                .foregroundColor(invitation.status == .pending ? .orange : invitation.status == .accepted ? .green : .red)
+            } else {
+                // Send Invitation Button
+                Button(action: { 
+                    Task {
+                        await sendInvitation(to: user)
+                    }
+                }) {
+                    HStack {
+                        if notificationManager.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                            Text("Davet Gönder")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(greenAccent)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .disabled(notificationManager.isLoading)
             }
         }
         .padding()
@@ -211,7 +239,7 @@ struct AddTeamMemberView: View {
                 .font(.headline)
                 .foregroundColor(.white)
             
-            if project.teamMembers.isEmpty && project.teamLeader == nil {
+            if project.teamMembers.isEmpty && project.teamLeader == nil && pendingInvitations.isEmpty {
                 Text(localization.localizedString("NoTeamMembers"))
                     .font(.subheadline)
                     .foregroundColor(.gray)
@@ -228,9 +256,97 @@ struct AddTeamMemberView: View {
                     ForEach(project.teamMembers) { member in
                         teamMemberRow(member, isLeader: false)
                     }
+                    
+                    // Pending Invitations
+                    ForEach(pendingInvitations.filter { $0.status == .pending }) { invitation in
+                        pendingInvitationRow(invitation)
+                    }
+                    
+                    // Rejected Invitations
+                    ForEach(pendingInvitations.filter { $0.status == .rejected }) { invitation in
+                        rejectedInvitationRow(invitation)
+                    }
                 }
             }
         }
+    }
+    
+    // MARK: - Pending Invitation Row
+    private func pendingInvitationRow(_ invitation: ProjectInvitation) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.orange.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: "clock")
+                        .font(.callout)
+                        .foregroundColor(.orange)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(invitation.receiverEmail)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                
+                Text("Davet gönderildi")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text("Kabul Bekliyor")
+                .font(.caption.bold())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.2))
+                .foregroundColor(.orange)
+                .cornerRadius(8)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+    
+    // MARK: - Rejected Invitation Row
+    private func rejectedInvitationRow(_ invitation: ProjectInvitation) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.red.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Image(systemName: "xmark")
+                        .font(.callout)
+                        .foregroundColor(.red)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(invitation.receiverEmail)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                
+                Text("Davet reddedildi")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text("Reddetti")
+                .font(.caption.bold())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.red.opacity(0.2))
+                .foregroundColor(.red)
+                .cornerRadius(8)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
     }
     
     // MARK: - Team Member Row
@@ -275,6 +391,11 @@ struct AddTeamMemberView: View {
     }
     
     // MARK: - Functions
+    
+    private func loadPendingInvitations() async {
+        pendingInvitations = await notificationManager.getInvitationsForProject(project.id.uuidString)
+    }
+    
     private func searchUser() {
         hideKeyboard()
         
@@ -316,15 +437,23 @@ struct AddTeamMemberView: View {
         }
     }
     
-    private func addTeamMember(_ user: User) async {
+    private func sendInvitation(to user: User) async {
+        guard let email = user.email else { return }
+        
         do {
-            print("🎯 Eklenecek kullanıcı: \(user.displayName ?? "N/A") - UID: \(user.uid)")
-            try await projectManager.addTeamMember(userId: user.uid, to: project.id)
+            try await notificationManager.sendInvitation(
+                to: email,
+                projectId: project.id.uuidString,
+                projectTitle: project.title
+            )
             await MainActor.run {
+                successMessage = "Davet başarıyla gönderildi! Kullanıcı daveti kabul ederse projeye eklenecek."
                 showSuccess = true
             }
+            // Refresh invitations list
+            await loadPendingInvitations()
         } catch {
-            print("❌ Ekleme hatası: \(error.localizedDescription)")
+            print("❌ Davet gönderme hatası: \(error.localizedDescription)")
             await MainActor.run {
                 errorMessage = error.localizedDescription
             }

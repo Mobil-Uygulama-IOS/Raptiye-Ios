@@ -12,6 +12,7 @@ import SwiftUI
 struct MainAppView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var projectManager = ProjectManager()
+    @StateObject private var notificationManager = NotificationManager.shared
     
     init() {
         print("🚀 MainAppView initialized")
@@ -26,10 +27,15 @@ struct MainAppView: View {
                 CustomTabView()
                     .environmentObject(authViewModel)
                     .environmentObject(projectManager)
+                    .environmentObject(notificationManager)
                     .onAppear {
                         print("✅ CustomTabView appeared")
-                        // Kullanıcı giriş yaptı, listener'ı başlat
+                        // Kullanıcı giriş yaptı, listener'ları başlat
                         projectManager.setupListener()
+                        notificationManager.setupListeners()
+                    }
+                    .onDisappear {
+                        notificationManager.removeListeners()
                     }
             } else {
                 // User is not logged in - show login
