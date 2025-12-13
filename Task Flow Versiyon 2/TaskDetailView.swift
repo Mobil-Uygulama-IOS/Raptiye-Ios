@@ -2,13 +2,18 @@ import SwiftUI
 
 struct TaskDetailView: View {
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var projectManager: ProjectManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @Binding var task: ProjectTask
     @State private var newComment: String = ""
     @FocusState private var isCommentFieldFocused: Bool
+    @State private var localComments: [TaskComment] = []
     
     init(task: Binding<ProjectTask>) {
         _task = task
+        _localComments = State(initialValue: task.wrappedValue.comments)
         print("TaskDetailView init with task: \(task.wrappedValue.title)")
+        print("Initial comments: \(task.wrappedValue.comments.count)")
     }
     
     var priorityColor: Color {
@@ -190,7 +195,7 @@ struct TaskDetailView: View {
                                 
                                 Spacer()
                                 
-                                Text("\(task.comments.count)")
+                                Text("\(localComments.count)")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.gray)
                                     .padding(.horizontal, 10)
@@ -202,7 +207,7 @@ struct TaskDetailView: View {
                             }
                             
                             // Comments list
-                            if task.comments.isEmpty {
+                            if localComments.isEmpty {
                                 VStack(spacing: 12) {
                                     Image(systemName: "bubble.left.and.bubble.right")
                                         .font(.system(size: 40))
@@ -219,7 +224,7 @@ struct TaskDetailView: View {
                                         .fill(Color(red: 0.15, green: 0.17, blue: 0.21))
                                 )
                             } else {
-                                ForEach(task.comments) { comment in
+                                ForEach(localComments) { comment in
                                     CommentCard(comment: comment)
                                 }
                             }
@@ -228,12 +233,12 @@ struct TaskDetailView: View {
                             HStack(alignment: .center, spacing: 12) {
                                 // Avatar
                                 Circle()
-                                    .fill(Color.blue.opacity(0.3))
+                                    .fill(Color(red: 0.40, green: 0.84, blue: 0.55).opacity(0.3))
                                     .frame(width: 40, height: 40)
                                     .overlay(
-                                        Text("S")
+                                        Text(authViewModel.userSession?.displayName?.prefix(1).uppercased() ?? "U")
                                             .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(Color(red: 0.40, green: 0.84, blue: 0.55))
                                     )
                                 
                                 // Text field
@@ -255,11 +260,12 @@ struct TaskDetailView: View {
                                 // Send button
                                 if !newComment.isEmpty {
                                     Button(action: {
+                                        print("🔘 Gönder butonuna tıklandı")
                                         addComment()
                                     }) {
                                         Image(systemName: "arrow.up.circle.fill")
                                             .font(.system(size: 28))
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(Color(red: 0.40, green: 0.84, blue: 0.55))
                                     }
                                 }
                             }
@@ -277,17 +283,67 @@ struct TaskDetailView: View {
     }
     
     private func addComment() {
-        guard !newComment.isEmpty else { return }
+        guard !newComment.isEmpty else { 
+            print("⚠️ Yorum boş")
+            return 
+        }
+        guard let projectId = task.projectId else { 
+            print("❌ ProjectId bulunamadı - task.projectId: \(String(describing: task.projectId))")
+            return 
+        }
+        guard let currentUser = authViewModel.userSession else { 
+            print("❌ Kullanıcı oturumu bulunamadı - authViewModel.userSession: \(String(describing: authViewModel.userSession))")
+            return 
+        }
+        
+        print("📝 Yorum ekleniyor...")
+        print("   Kullanıcı: \(currentUser.displayName ?? "Anonim")")
+        print("   Proje ID: \(projectId)")
+        print("   Görev ID: \(task.id)")
+        print("   Yorum: \(newComment)")
+        
+        let author = TaskAssignee(
+            name: currentUser.displayName ?? "Kullanıcı",
+            avatarName: "person.circle.fill",
+            email: currentUser.email ?? ""
+        )
         
         let comment = TaskComment(
-            author: task.assignee ?? ProjectTask.sampleAssignees[0],
+            author: author,
             content: newComment,
             createdDate: Date()
         )
         
-        task.comments.append(comment)
+        let commentToSave = newComment
+        
+        // Önce local array'e ekle (anında görünmesi için)
+        localComments.append(comment)
+        print("🔍 Yorum local array'e eklendi. Toplam: \(localComments.count)")
+        
+        // UI'yi temizle
         newComment = ""
         isCommentFieldFocused = false
+        
+        // Task'ı güncelle
+        var updatedTask = task
+        updatedTask.comments.append(comment)
+        task = updatedTask
+        
+        Task { @MainActor in
+            do {
+                print("🔄 Firebase'e kaydediliyor...")
+                try await projectManager.updateTask(task, in: projectId)
+                print("✅ Yorum başarıyla Firebase'e kaydedildi!")
+            } catch {
+                print("❌ Yorum kaydetme hatası: \(error.localizedDescription)")
+                // Hata durumunda yorumu geri al
+                localComments.removeLast()
+                var revertedTask = task
+                revertedTask.comments.removeLast()
+                task = revertedTask
+                newComment = commentToSave
+            }
+        }
     }
 }
 

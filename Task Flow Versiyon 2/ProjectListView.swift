@@ -296,7 +296,7 @@ struct ProjectListView: View {
         }
         .sheet(isPresented: $showCreateProject) {
             CreateProjectView { newProject in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if let foundProject = projectManager.projects.first(where: { $0.id == newProject.id }) {
                         selectedProject = foundProject
                     }
@@ -308,14 +308,7 @@ struct ProjectListView: View {
         .onAppear {
             if !hasAppeared {
                 hasAppeared = true
-                // Listener zaten çalışıyor, sadece ilk loading durumunu göster
-                if projectManager.projects.isEmpty && !projectManager.isLoading {
-                    projectManager.isLoading = true
-                    // Kısa bir süre sonra listener'dan veri gelecek
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        projectManager.isLoading = false
-                    }
-                }
+                // Listener zaten çalışıyor, loading state'i otomatik kontrol edilecek
             }
         }
     }

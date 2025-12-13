@@ -100,7 +100,7 @@ struct ProjectAnalyticsView: View {
         .navigationBarHidden(true)
         .onAppear {
             // Simulate analytics data loading
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isLoading = false
             }
         }

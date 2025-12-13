@@ -146,7 +146,7 @@ struct ProjectBoardView: View {
         .navigationBarHidden(true)
         .onAppear {
             // Simulate data loading
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isLoading = false
             }
         }
