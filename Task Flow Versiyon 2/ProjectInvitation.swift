@@ -10,7 +10,7 @@ enum InvitationStatus: String, Codable {
 
 // MARK: - Project Invitation Model
 struct ProjectInvitation: Identifiable, Codable {
-    @DocumentID var documentId: String?
+    var documentId: String?
     var id: String
     var projectId: String
     var projectTitle: String

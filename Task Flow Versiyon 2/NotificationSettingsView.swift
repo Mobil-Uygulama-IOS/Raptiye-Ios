@@ -209,7 +209,7 @@ struct NotificationSettingsView: View {
                 await notificationManager.requestEmailNotificationPermission()
             }
             
-            await MainActor.run {
+            DispatchQueue.main.async {
                 isSaving = false
             }
         }

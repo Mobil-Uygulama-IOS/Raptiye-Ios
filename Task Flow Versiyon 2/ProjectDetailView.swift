@@ -303,7 +303,7 @@ struct ProjectDetailView: View {
         Task {
             do {
                 try await projectManager.deleteProject(project)
-                await MainActor.run {
+                DispatchQueue.main.async {
                     presentationMode.wrappedValue.dismiss()
                 }
             } catch {

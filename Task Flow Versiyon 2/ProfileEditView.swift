@@ -315,7 +315,7 @@ struct ProfileEditView: View {
         Task {
             await authViewModel.updateDisplayName(displayName)
             
-            await MainActor.run {
+            DispatchQueue.main.async {
                 isLoading = false
                 alertMessage = "Profil bilgileriniz başarıyla güncellendi."
                 showAlert = true
@@ -345,9 +345,9 @@ struct ProfileEditView: View {
         Task {
             let success = await authViewModel.deleteAccount()
             
-            await MainActor.run {
+            DispatchQueue.main.async {
                 isLoading = false
-                
+
                 if success {
                     presentationMode.wrappedValue.dismiss()
                 } else {

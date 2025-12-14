@@ -310,7 +310,7 @@ struct CreateProjectView: View {
                     try await projectManager.updateProject(updatedProject)
                     
                     // Close view
-                    await MainActor.run {
+                    DispatchQueue.main.async {
                         presentationMode.wrappedValue.dismiss()
                     }
                 } catch {
@@ -351,7 +351,7 @@ struct CreateProjectView: View {
                     onProjectCreated?(newProject)
                     
                     // Close view
-                    await MainActor.run {
+                    DispatchQueue.main.async {
                         presentationMode.wrappedValue.dismiss()
                     }
                 } catch {

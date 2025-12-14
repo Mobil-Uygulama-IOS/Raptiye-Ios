@@ -170,10 +170,8 @@ final class NotificationManager: ObservableObject {
             throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Kullanıcı oturum açmamış"])
         }
         
-        await MainActor.run {
-            isLoading = true
-            errorMessage = nil
-        }
+        isLoading = true
+        errorMessage = nil
         
         do {
             // Find receiver by email
@@ -185,7 +183,7 @@ final class NotificationManager: ObservableObject {
             print("📄 Bulunan döküman sayısı: \(usersSnapshot.documents.count)")
             
             guard let receiverDoc = usersSnapshot.documents.first else {
-                await MainActor.run { isLoading = false }
+                isLoading = false
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı"])
             }
             
@@ -200,7 +198,7 @@ final class NotificationManager: ObservableObject {
                 .getDocuments()
             
             if !existingInvitation.documents.isEmpty {
-                await MainActor.run { isLoading = false }
+                isLoading = false
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcıya zaten davet gönderilmiş"])
             }
             
@@ -209,7 +207,7 @@ final class NotificationManager: ObservableObject {
             if let projectData = projectDoc.data(),
                let teamMemberIds = projectData["teamMemberIds"] as? [String],
                teamMemberIds.contains(receiverId) {
-                await MainActor.run { isLoading = false }
+                isLoading = false
                 throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bu kullanıcı zaten projenin üyesi"])
             }
             
@@ -225,7 +223,7 @@ final class NotificationManager: ObservableObject {
             )
             
             print("📨 Davet oluşturuluyor: \(invitation.id)")
-            try await db.collection("invitations").document(invitation.id).setData(from: invitation)
+            try db.collection("invitations").document(invitation.id).setData(from: invitation)
             print("✅ Davet kaydedildi")
             
             // Create notification for receiver
@@ -238,18 +236,16 @@ final class NotificationManager: ObservableObject {
             )
             
             print("🔔 Bildirim oluşturuluyor: \(notification.id)")
-            try await db.collection("notifications").document(notification.id).setData(from: notification)
+            try db.collection("notifications").document(notification.id).setData(from: notification)
             print("✅ Bildirim kaydedildi")
             
             print("✅ Davet başarıyla gönderildi: \(receiverEmail)")
             
-            await MainActor.run { isLoading = false }
+            isLoading = false
             
         } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-                isLoading = false
-            }
+            errorMessage = error.localizedDescription
+            isLoading = false
             print("❌ Davet gönderme hatası: \(error)")
             throw error
         }
@@ -346,10 +342,8 @@ final class NotificationManager: ObservableObject {
             print("🗑️ Davet silindi (pending listesinden kaldırıldı)")
             
             // UI'dan hemen kaldır (listener'ın güncellenmesini beklemeden)
-            await MainActor.run {
-                self.pendingInvitations.removeAll { $0.id == invitation.id }
-                print("✅ Davet UI'dan kaldırıldı, kalan: \(self.pendingInvitations.count)")
-            }
+            pendingInvitations.removeAll { $0.id == invitation.id }
+            print("✅ Davet UI'dan kaldırıldı, kalan: \(self.pendingInvitations.count)")
             
         } catch {
             errorMessage = error.localizedDescription
@@ -448,14 +442,10 @@ final class NotificationManager: ObservableObject {
         do {
             let doc = try await db.collection("users").document(userId).getDocument()
             let settings = doc.data()?["notificationSettings"] as? [String: Any]
-            await MainActor.run {
-                completion(settings)
-            }
+            completion(settings)
         } catch {
             print("❌ Bildirim ayarları yükleme hatası: \(error)")
-            await MainActor.run {
-                completion(nil)
-            }
+            completion(nil)
         }
     }
     

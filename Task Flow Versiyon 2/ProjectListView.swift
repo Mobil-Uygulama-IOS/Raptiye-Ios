@@ -11,7 +11,7 @@ struct ProjectListView: View {
     @State private var showProjectBoard = false
     @State private var selectedProject: Project?
     @State private var showCreateProject = false
-    @State private var hasAppeared = false
+    // hasAppeared kaldırıldı
     
     var sortOptions: [String] {
         [localization.localizedString("SortOptionDate"), localization.localizedString("SortOptionName"), localization.localizedString("SortOptionProgress")]
@@ -305,12 +305,7 @@ struct ProjectListView: View {
             .environmentObject(projectManager)
             .environmentObject(themeManager)
         }
-        .onAppear {
-            if !hasAppeared {
-                hasAppeared = true
-                // Listener zaten çalışıyor, loading state'i otomatik kontrol edilecek
-            }
-        }
+        // onAppear kaldırıldı, listener MainAppView'da başlatılıyor
     }
     
     // Empty state view

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CustomTabView: View {
+    @EnvironmentObject var projectManager: ProjectManager
     @State private var selectedTab = 0
     @StateObject private var themeManager = ThemeManager.shared
     @StateObject private var localization = LocalizationManager.shared
@@ -18,6 +19,7 @@ struct CustomTabView: View {
                 case 0:
                     ProjectListView()
                         .environmentObject(themeManager)
+                        .environmentObject(projectManager)
                 case 1:
                     NotificationsView()
                         .environmentObject(themeManager)
@@ -27,6 +29,7 @@ struct CustomTabView: View {
                 default:
                     ProjectListView()
                         .environmentObject(themeManager)
+                        .environmentObject(projectManager)
                 }
             }                // Custom Tab Bar
                 HStack {

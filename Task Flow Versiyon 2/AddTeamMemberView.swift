@@ -475,20 +475,20 @@ struct AddTeamMemberView: View {
             do {
                 if let user = try await projectManager.searchUserByEmail(cleanEmail) {
                     print("✅ Kullanıcı bulundu: \(user.displayName ?? "İsimsiz") - \(user.email ?? "")")
-                    await MainActor.run {
+                    DispatchQueue.main.async {
                         searchResult = user
                         isSearching = false
                     }
                 } else {
                     print("⚠️ Kullanıcı bulunamadı: \(searchEmail)")
-                    await MainActor.run {
+                    DispatchQueue.main.async {
                         errorMessage = localization.localizedString("UserNotFound")
                         isSearching = false
                     }
                 }
             } catch {
                 print("❌ Arama hatası: \(error.localizedDescription)")
-                await MainActor.run {
+                DispatchQueue.main.async {
                     errorMessage = "\(localization.localizedString("SearchError")): \(error.localizedDescription)"
                     isSearching = false
                 }
@@ -500,13 +500,13 @@ struct AddTeamMemberView: View {
     private func removeTeamMember(_ user: User) async {
         do {
             try await projectManager.removeTeamMember(userId: user.uid, from: project.id)
-            await MainActor.run {
+            DispatchQueue.main.async {
                 successMessage = "\(user.displayName ?? "Kullanıcı") projeden çıkarıldı."
                 showSuccess = true
             }
         } catch {
             print("❌ Üye çıkarma hatası: \(error.localizedDescription)")
-            await MainActor.run {
+            DispatchQueue.main.async {
                 errorMessage = "Üye çıkarılamadı: \(error.localizedDescription)"
             }
         }
@@ -521,7 +521,7 @@ struct AddTeamMemberView: View {
                 projectId: project.id.uuidString,
                 projectTitle: project.title
             )
-            await MainActor.run {
+            DispatchQueue.main.async {
                 successMessage = "Davet başarıyla gönderildi! Kullanıcı daveti kabul ederse projeye eklenecek."
                 showSuccess = true
             }
@@ -529,7 +529,7 @@ struct AddTeamMemberView: View {
             await loadPendingInvitations()
         } catch {
             print("❌ Davet gönderme hatası: \(error.localizedDescription)")
-            await MainActor.run {
+            DispatchQueue.main.async {
                 errorMessage = error.localizedDescription
             }
         }
