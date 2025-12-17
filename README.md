@@ -1,4 +1,4 @@
-# TaskFlow - iOS Proje Yönetim Uygulaması
+# Raptiye - iOS Proje Yönetim Uygulaması
 
 TaskFlow, iOS platformu için geliştirilmiş modern bir proje yönetim uygulamasıdır. SwiftUI kullanılarak oluşturulmuş olup, kullanıcıların projelerini ve görevlerini etkili bir şekilde yönetmelerine olanak tanır.
 
